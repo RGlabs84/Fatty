@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sed -i 's|in the Thunderstore `manifest.json` `dependencies`|in the Hexium `manifest.json` `dependencies`|' c--WubarrkCODING-Fatty/memory/valheim-bepinex-version.md)",
+      "Bash(sed -i -e 's|\\\\*\\\\*The user is on Gale + Hexium as of 2026-07-26\\\\*\\\\* \\(Gale = mod manager, replacing r2modman; Hexium = where mods are|**The user is on Gale + Hexium.** \\(Gale = mod manager; Hexium = where mods are|' -e 's|`WuBCode-Tester` \\(Gale, gone\\), `WingsOfVal-Tester` \\(r2modman\\)\\\\.|`WuBCode-Tester` \\(Gale, gone\\), `WingsOfVal-Tester` \\(retired\\).|' -e 's|\\(was `\\\\.\\\\.\\\\.r2modmanPlus-local\\\\\\\\Valheim\\\\\\\\profiles\\\\\\\\WingsOfVal-Tester\\\\\\\\BepInEx\\\\\\\\LogOutput.log` before the move to Gale\\)|\\(older notes may reference a retired pre-Gale profile path; ignore those\\)|' c--WubarrkCODING-MistsofAvalor/memory/avalor-deploy-and-log-paths.md)",
+      "Bash(sed -i 's|applies to `ThunderstorePackage/CHANGELOG.md` and any changelog|applies to `HexiumDist/CHANGELOG.md` and any changelog|' c--WubarrkCODING-MistsofAvalor/memory/changelog-no-dates.md)",
+      "Bash(sed -i -e 's|for Thunderstore packaging conventions|for Hexium packaging conventions|' -e 's|smoke-test in the `WingsOfVal-Tester` r2modman profile \\(`C:\\\\\\\\Users\\\\\\\\rglmo\\\\\\\\AppData\\\\\\\\Roaming\\\\\\\\r2modmanPlus-local\\\\\\\\Valheim\\\\\\\\profiles\\\\\\\\WingsOfVal-Tester\\\\\\\\`\\)|smoke-test in a Gale profile \\(`%APPDATA%\\\\\\\\com.kesomannen.gale\\\\\\\\valheim\\\\\\\\profiles\\\\\\\\`\\)|' c--WubarrkCODING-DeathBeforeDishonor/memory/project_deathbeforedishonor.md)",
+      "Bash(sed -i -e 's|several of which are packaged for Thunderstore \\(`Distribute/`, `ThunderstorePackage/` folders\\) and tested live via an r2modman profile \\(`WingsOfVal-Tester`\\)|several of which are packaged for Hexium \\(`HexiumDist/` folders\\) and tested live via a Gale profile|' -e 's|\\(csproj + `libs/` reference assemblies + Thunderstore manifest/icon/README\\)|\\(csproj + `libs/` reference assemblies + Hexium manifest/icon/README\\)|' c--WubarrkCODING-DeathBeforeDishonor/memory/user_wubarrk_valheim_modding.md)",
+      "Bash(DOTNET_ROLL_FORWARD=LatestMajor ilspycmd -t Game \"c:/WubarrkCODING/libs-Tools/assembly_valheim.dll\")"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\rglmo\\.claude\\projects\\c--WubarrkCODING-MistsofAvalor\\memory"
+    ]
+  }
+}
