@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.4] - Compatibility Pass
+
+### Changed
+
+- **Rebuilt and re-verified against the current Valheim build.** There are no gameplay changes in
+  this release - every setting, milestone, perk and synergy behaves exactly as it did in 1.1.3. If
+  1.1.3 is working for you, nothing you can see will be different; this is here so the build you're
+  running is the one that has been checked against the game as it ships today.
+
 ## [1.1.3] - Perk Sync Fix
 
 ### Fixed
