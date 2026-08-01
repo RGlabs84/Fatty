@@ -455,6 +455,12 @@ namespace Fatty.Patches
                 stamina += fattyStamina;
                 eitr += fattyEitr;
 
+                // Eitr milestone bonus: permanent, not stomach-content-dependent, so it's added once
+                // here rather than per-stack inside the loop above. Vanilla has no base-eitr field to
+                // write like m_baseHP/m_baseStamina (GetTotalFoodValue hardcodes eitr = 0f before
+                // summing food), so this is the only place a permanent eitr bonus can land.
+                eitr += Progression.FoodMilestones.GetEitrBonus(__instance);
+
                 // A bigger bar with vanilla's flat regen rate is just a slower-filling bar.
                 Regen.RegenScaling.Apply(__instance, stamina, refStamina, eitr, refEitr);
             }
@@ -580,6 +586,119 @@ namespace Fatty.Patches
             catch (System.Exception ex)
             {
                 FattyPlugin.Instance.Log.LogError($"Fatty Mod: Feature Lost - Food Regen Stacking. Reason: {ex}");
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // Sequential stack decay: vanilla's UpdateFood decays EVERY entry in m_foods by 1s every
+        // tick, unconditionally (confirmed by decompile - no per-entry gating exists in vanilla at
+        // all). For a single vanilla slot that's fine, but Fatty stacks up to maxFoodStacks copies
+        // of the SAME prefab in m_foods, so all of them counted down - and expired - in lockstep,
+        // which is what made "banked" reserves a lie: nothing was actually being held in reserve.
+        //
+        // Desired behaviour (per design): only the LAST-EATEN stack of a given prefab ticks down.
+        // Every older stack of that same prefab is frozen until the active one expires, at which
+        // point the next-most-recent survivor becomes active on its own - no promotion code needed.
+        //
+        // This works with zero new state because EatFood_Prefix only ever Adds (never Inserts/Sorts)
+        // and vanilla's own expiry removal is an ordinary List.Remove that preserves relative order
+        // (confirmed - the only mutations against m_foods anywhere in Fatty are Add and Clear). That
+        // means, within any same-prefab group, the highest list index is ALWAYS the most-recently-
+        // eaten survivor. So every tick: snapshot every non-last member of each group before vanilla
+        // runs, let vanilla's original decrement/removal logic execute completely untouched, then
+        // restore the snapshot - undoing the decrement for everything except the one active entry.
+        //
+        // A prefix/postfix undo rather than a transpiler on purpose: vanilla's nested internal
+        // GetTotalFoodValue() call (inside UpdateFood, before any Harmony postfix can run) will see a
+        // frozen entry's just-decremented (not yet restored) value for that one nested call, meaning
+        // a frozen stack's contribution to actual max HP/Stamina/Eitr is understated by a fixed,
+        // non-growing 1-second offset (never compounding - each tick decrements then restores back to
+        // the same value). Against typical burn times (100s-1800s) that's under 1%, and it never
+        // reaches the HUD/Feast Ledger at all - those read GetFoods() from a separate call after
+        // UpdateFood has fully returned (prefix->original->postfix already complete by then). Not
+        // worth a transpiler to close.
+        //
+        // Accepted edge case, not worth extra code: if a stack is displaced from active to frozen at
+        // a moment its own m_time is already under 1s, it can still expire on that same transition
+        // tick before this freezes it. It was about to expire anyway - letting it go is fine.
+        // ------------------------------------------------------------------
+        private static readonly List<Player.Food> _frozenFoodEntries = new List<Player.Food>();
+        private static readonly List<float> _frozenFoodTimes = new List<float>();
+        private static readonly List<float> _frozenFoodHealth = new List<float>();
+        private static readonly List<float> _frozenFoodStamina = new List<float>();
+        private static readonly List<float> _frozenFoodEitr = new List<float>();
+
+        [HarmonyPatch(typeof(Player), "UpdateFood")]
+        [HarmonyPrefix]
+        public static void FoodDecay_Prefix(List<Player.Food> ___m_foods)
+        {
+            _frozenFoodEntries.Clear();
+            _frozenFoodTimes.Clear();
+            _frozenFoodHealth.Clear();
+            _frozenFoodStamina.Clear();
+            _frozenFoodEitr.Clear();
+
+            try
+            {
+                if (___m_foods == null || ___m_foods.Count < 2) return;
+
+                // Highest list index per prefab wins - that's the most-recently-eaten survivor.
+                Dictionary<string, int> lastIndexByPrefab = new Dictionary<string, int>();
+                for (int i = 0; i < ___m_foods.Count; i++)
+                {
+                    Player.Food f = ___m_foods[i];
+                    if (f == null || f.m_item == null || f.m_item.m_shared == null) continue;
+                    lastIndexByPrefab[ResolvePrefabName(f)] = i;
+                }
+
+                for (int i = 0; i < ___m_foods.Count; i++)
+                {
+                    Player.Food f = ___m_foods[i];
+                    if (f == null || f.m_item == null || f.m_item.m_shared == null) continue;
+                    if (lastIndexByPrefab.TryGetValue(ResolvePrefabName(f), out int lastIdx) && lastIdx == i)
+                        continue; // active entry - let vanilla decay it normally
+
+                    _frozenFoodEntries.Add(f);
+                    _frozenFoodTimes.Add(f.m_time);
+                    _frozenFoodHealth.Add(f.m_health);
+                    _frozenFoodStamina.Add(f.m_stamina);
+                    _frozenFoodEitr.Add(f.m_eitr);
+                }
+            }
+            catch (System.Exception ex)
+            {
+                FattyPlugin.Instance.Log.LogError($"Fatty Mod: Feature Lost - Sequential Food Decay (prefix). Reason: {ex}");
+                _frozenFoodEntries.Clear();
+            }
+        }
+
+        [HarmonyPatch(typeof(Player), "UpdateFood")]
+        [HarmonyPostfix]
+        public static void FoodDecay_Postfix()
+        {
+            try
+            {
+                for (int i = 0; i < _frozenFoodEntries.Count; i++)
+                {
+                    Player.Food f = _frozenFoodEntries[i];
+                    if (f == null) continue;
+                    f.m_time = _frozenFoodTimes[i];
+                    f.m_health = _frozenFoodHealth[i];
+                    f.m_stamina = _frozenFoodStamina[i];
+                    f.m_eitr = _frozenFoodEitr[i];
+                }
+            }
+            catch (System.Exception ex)
+            {
+                FattyPlugin.Instance.Log.LogError($"Fatty Mod: Feature Lost - Sequential Food Decay (postfix). Reason: {ex}");
+            }
+            finally
+            {
+                _frozenFoodEntries.Clear();
+                _frozenFoodTimes.Clear();
+                _frozenFoodHealth.Clear();
+                _frozenFoodStamina.Clear();
+                _frozenFoodEitr.Clear();
             }
         }
 

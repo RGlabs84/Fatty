@@ -35,15 +35,46 @@ namespace Fatty.Configuration
         // Note: Food duration - Fatty's own multiplier, so the external mod is optional
         public static ConfigEntry<float> foodDurationMultiplier;
 
-        // Note: Milestones - lifetime food counts grant permanent base HP
+        // Note: Milestones - lifetime food counts grant permanent, category-flavoured perks. Each of
+        // Meat/Sweet/Eitr/Fish/Fatness ALTERNATES between two reward types across its 3 tiers (tier
+        // 1 and 3 grant one type, tier 2 grants the other) - e.g. Eitr: +eitr, then +eitr regen%,
+        // then +eitr again. Vegetable is the one exception and stays a flat regen% on all 3 tiers,
+        // since it never owned a single pool to alternate a "flat" reward against in the first place.
         public static ConfigEntry<bool> enableMilestones;
         public static ConfigEntry<int> milestoneTier1Count;
         public static ConfigEntry<int> milestoneTier2Count;
         public static ConfigEntry<int> milestoneTier3Count;
         public static ConfigEntry<float> milestoneTier1Hp;
-        public static ConfigEntry<float> milestoneTier2Hp;
+        public static ConfigEntry<float> milestoneTier2HpRegen;
         public static ConfigEntry<float> milestoneTier3Hp;
         public static ConfigEntry<float> milestoneTotalCap;
+
+        public static ConfigEntry<float> milestoneTier1CarryWeight;
+        public static ConfigEntry<float> milestoneTier2MeatSkill;
+        public static ConfigEntry<float> milestoneTier3CarryWeight;
+        public static ConfigEntry<float> milestoneCarryWeightCap;
+
+        public static ConfigEntry<float> milestoneTier1Stamina;
+        public static ConfigEntry<float> milestoneTier2StaminaRegen;
+        public static ConfigEntry<float> milestoneTier3Stamina;
+        public static ConfigEntry<float> milestoneStaminaCap;
+
+        public static ConfigEntry<float> milestoneTier1Eitr;
+        public static ConfigEntry<float> milestoneTier2EitrRegen;
+        public static ConfigEntry<float> milestoneTier3Eitr;
+        public static ConfigEntry<float> milestoneEitrCap;
+
+        public static ConfigEntry<float> milestoneTier1SwimSpeed;
+        public static ConfigEntry<float> milestoneTier2FishSwimStamina;
+        public static ConfigEntry<float> milestoneTier3SwimSpeed;
+
+        public static ConfigEntry<float> milestoneTier1Regen;
+        public static ConfigEntry<float> milestoneTier2Regen;
+        public static ConfigEntry<float> milestoneTier3Regen;
+
+        public static ConfigEntry<int> fatnessTier1Count;
+        public static ConfigEntry<int> fatnessTier2Count;
+        public static ConfigEntry<int> fatnessTier3Count;
 
         // Note: Drink buffs
         public static ConfigEntry<bool> enableDrinkBuffs;
@@ -75,6 +106,7 @@ namespace Fatty.Configuration
         public static ConfigEntry<float> foodBreakdownPanelHeight;
         public static ConfigEntry<bool> useSegmentedStackBar;
         public static ConfigEntry<KeyboardShortcut> breakdownToggleKey;
+        public static ConfigEntry<int> feastLedgerFontSizeDelta;
 
         public static void Init(ConfigFile config)
         {
@@ -83,26 +115,26 @@ namespace Fatty.Configuration
 
             noFoodDecay = BindSynced(config, "2 - Core", "No Food Decay", true,
                 "Vanilla fades a food's stats to nothing as its timer runs down. ON = you keep 100% of a food's stats until its timer expires, then lose them all at once. OFF = vanilla's gradual decay curve.");
-            maxFoodStacks = BindSynced(config, "2 - Core", "Max Food Stacks", 5,
-                "How many times the same food can be eaten at once. Vanilla = 1 (no stacking). Each extra stack is worth less - see section 3.", 1, 20);
+            maxFoodStacks = BindSynced(config, "2 - Core", "Max Food Stacks", 4,
+                "How many times the same food can be eaten at once. Vanilla = 1 (no stacking), 4 = default. Each extra stack is worth less - see section 3.", 1, 20);
 
-            stackDiminishingReturnStep1 = BindSynced(config, "3 - Stacking", "Stack 2 Multiplier", 0.5f,
-                "Fraction of a food's stats granted by its 2nd stack. 1.0 = full value, 0.5 = 50% (default), 0.0 = nothing. The 1st stack is always 100%.", 0f, 1f);
-            stackDiminishingReturnStep2 = BindSynced(config, "3 - Stacking", "Stack 3 Multiplier", 0.25f,
-                "Fraction of a food's stats granted by its 3rd stack. 0.25 = 25% (default).", 0f, 1f);
-            stackDiminishingReturnStep3 = BindSynced(config, "3 - Stacking", "Stack 4+ Multiplier", 0.05f,
-                "Fraction of a food's stats granted by the 4th and every further stack. 0.05 = 5% (default).", 0f, 1f);
+            stackDiminishingReturnStep1 = BindSynced(config, "3 - Stacking", "Stack 2 Multiplier", 0.3f,
+                "Fraction of a food's stats granted by its 2nd stack. 1.0 = full value, 0.3 = 30% (default), 0.0 = nothing. The 1st stack is always 100%.", 0f, 1f);
+            stackDiminishingReturnStep2 = BindSynced(config, "3 - Stacking", "Stack 3 Multiplier", 0.2f,
+                "Fraction of a food's stats granted by its 3rd stack. 0.2 = 20% (default).", 0f, 1f);
+            stackDiminishingReturnStep3 = BindSynced(config, "3 - Stacking", "Stack 4+ Multiplier", 0.1f,
+                "Fraction of a food's stats granted by the 4th and every further stack. 0.1 = 10% (default).", 0f, 1f);
 
             enableSynergies = BindSynced(config, "4 - Synergies", "Enable Synergies", true,
                 "Enables the dietary synergy status effects (Balanced Diet, Sugar Rush, Fisherman's Friend, Lumberjack's Feast).");
-            balancedDietRegen = BindSynced(config, "4 - Synergies", "Balanced Diet Regen Multiplier", 3f,
-                "Balanced Diet (1 Meat + 1 Veggie): MULTIPLIER on vanilla health & stamina regen. 1.0 = vanilla, 3.0 = 3x vanilla / +200% (default).", 1f, 10f);
-            sugarRushSpeedBonus = BindSynced(config, "4 - Synergies", "Sugar Rush Speed Multiplier", 2.5f,
-                "Sugar Rush (3 Sweets + 1 Drink): MULTIPLIER on vanilla movement speed. 1.0 = vanilla, 2.5 = 2.5x / +150% (default).", 1f, 5f);
-            fishermanSwimStaminaReduction = BindSynced(config, "4 - Synergies", "Fisherman Swim Stamina Reduction", 0.50f,
-                "Fisherman's Friend (2 Fish + 1 Veggie): FRACTION of vanilla swim stamina drain removed. 0.0 = vanilla drain, 0.50 = half the drain (default), 1.0 = free swimming.", 0f, 1f);
-            lumberjackCarryWeight = BindSynced(config, "4 - Synergies", "Lumberjack Carry Weight Bonus", 100f,
-                "Lumberjack's Feast (3 Meat + 1 Drink): FLAT carry weight added on top of vanilla. 0 = vanilla, 100 = +100 units (default).", 0f, 1000f);
+            balancedDietRegen = BindSynced(config, "4 - Synergies", "Balanced Diet Regen Multiplier", 2f,
+                "Balanced Diet (1 Meat + 1 Veggie): MULTIPLIER on vanilla health & stamina regen. 1.0 = vanilla, 2.0 = 2x vanilla / +100% (default).", 1f, 10f);
+            sugarRushSpeedBonus = BindSynced(config, "4 - Synergies", "Sugar Rush Speed Multiplier", 2f,
+                "Sugar Rush (3 Sweets + 1 Drink): MULTIPLIER on vanilla movement speed. 1.0 = vanilla, 2.0 = 2x / +100% (default).", 1f, 5f);
+            fishermanSwimStaminaReduction = BindSynced(config, "4 - Synergies", "Fisherman Swim Stamina Reduction", 0.80f,
+                "Fisherman's Friend (2 Fish + 1 Veggie): FRACTION of vanilla swim stamina drain removed. 0.0 = vanilla drain, 0.80 = 80% of the drain gone (default), 1.0 = free swimming.", 0f, 1f);
+            lumberjackCarryWeight = BindSynced(config, "4 - Synergies", "Lumberjack Carry Weight Bonus", 175f,
+                "Lumberjack's Feast (3 Meat + 1 Drink): FLAT carry weight added on top of vanilla. 0 = vanilla, 175 = +175 units (default).", 0f, 1000f);
             lumberjackWoodcuttingDamage = BindSynced(config, "4 - Synergies", "Lumberjack Woodcutting Damage", 0.45f,
                 "Lumberjack's Feast (3 Meat + 1 Drink): FRACTION added to vanilla woodcutting damage. 0.0 = vanilla, 0.45 = +45% (default).", 0f, 5f);
 
@@ -111,31 +143,80 @@ namespace Fatty.Configuration
             // mod is a straight regen downgrade, worst of all for eitr/mage builds.
             scaleRegenWithPool = BindSynced(config, "6 - Regen", "Scale Regen With Pool", true,
                 "Vanilla regenerates stamina & eitr at a FLAT rate that ignores bar size, so any mod that enlarges your pools makes them refill slower. ON = Fatty scales the rate with the pool, holding refill TIME at vanilla parity. OFF = vanilla's flat rate.");
-            maxRegenScale = BindSynced(config, "6 - Regen", "Max Regen Scale", 4f,
-                "Safety cap on the above, as a MULTIPLIER of vanilla's regen rate. 1.0 = never speed up at all, 4.0 = at most 4x vanilla (default). Fatty never scales BELOW 1.0, so regen can never end up worse than vanilla.", 1f, 20f);
+            maxRegenScale = BindSynced(config, "6 - Regen", "Max Regen Scale", 2f,
+                "Safety cap on the above, as a MULTIPLIER of vanilla's regen rate. 1.0 = never speed up at all, 2.0 = at most 2x vanilla (default). Fatty never scales BELOW 1.0, so regen can never end up worse than vanilla.", 1f, 20f);
 
             // Fatty's own food timer extension, so blacks7ar's FoodDurationMultiplier is optional.
             // If that mod IS installed Fatty defers to its value entirely rather than multiplying
             // the two, so nobody running 2x in both silently ends up at 4x.
-            foodDurationMultiplier = BindSynced(config, "7 - Duration", "Food Duration Multiplier", 1f,
-                "MULTIPLIER on how long food lasts. 1.0 = vanilla duration (default), 2.0 = food lasts twice as long. IGNORED while blacks7ar's FoodDurationMultiplier is installed - that mod's value is used instead, so the two can never multiply together.", 0.1f, 10f);
+            foodDurationMultiplier = BindSynced(config, "7 - Duration", "Food Duration Multiplier", 2f,
+                "MULTIPLIER on how long food lasts. 1.0 = vanilla duration, 2.0 = food lasts twice as long (default). IGNORED while blacks7ar's FoodDurationMultiplier is installed - that mod's value is used instead, so the two can never multiply together.", 0.1f, 10f);
 
             enableMilestones = BindSynced(config, "8 - Milestones", "Enable Milestones", true,
-                "Eating a lot of a food category over the life of your character permanently raises your BASE max health. Vanilla base is 25. Small, infrequent awards that reward a broad diet.");
+                "Eating a lot of a food category over the life of your character permanently raises a stat matched to that category's flavour: Meat->carry weight, Sweet->stamina, Eitr->eitr, Fish->swim speed, Vegetable->all-round regen. Total food eaten across EVERY category (a separate 'Fatness' tally) raises base max health. Small, infrequent awards that reward a broad diet.");
             milestoneTier1Count = BindSynced(config, "8 - Milestones", "Tier 1 Count", 50,
                 "Items of a SINGLE category that must be eaten to earn that category's 1st milestone. Default 50.", 1, 100000);
             milestoneTier2Count = BindSynced(config, "8 - Milestones", "Tier 2 Count", 200,
                 "Items of a single category needed for its 2nd milestone. Default 200. Should be higher than Tier 1 Count.", 1, 100000);
             milestoneTier3Count = BindSynced(config, "8 - Milestones", "Tier 3 Count", 500,
                 "Items of a single category needed for its 3rd milestone. Default 500. Should be higher than Tier 2 Count.", 1, 100000);
-            milestoneTier1Hp = BindSynced(config, "8 - Milestones", "Tier 1 Health", 5f,
-                "FLAT base max health added by a category's 1st milestone. 5 = +5 on top of vanilla's 25 base (default).", 0f, 500f);
-            milestoneTier2Hp = BindSynced(config, "8 - Milestones", "Tier 2 Health", 5f,
-                "Flat base max health added by a category's 2nd milestone. Default +5.", 0f, 500f);
-            milestoneTier3Hp = BindSynced(config, "8 - Milestones", "Tier 3 Health", 10f,
-                "Flat base max health added by a category's 3rd milestone. Default +10.", 0f, 500f);
-            milestoneTotalCap = BindSynced(config, "8 - Milestones", "Total Health Cap", 50f,
-                "Hard cap on total base health from ALL milestones combined. Each of the 5 real categories can grant 20 at the defaults, so a broad diet is what reaches the 50 cap.", 0f, 1000f);
+
+            fatnessTier1Count = BindSynced(config, "8 - Milestones", "Fatness Tier 1 Count", 150,
+                "TOTAL items eaten across EVERY category (including unrecognized food) for Fatness tier 1. Separate from the per-category thresholds above since this accumulates ~5x faster. Default 150.", 1, 500000);
+            fatnessTier2Count = BindSynced(config, "8 - Milestones", "Fatness Tier 2 Count", 600,
+                "Total items eaten across every category for Fatness tier 2. Default 600.", 1, 500000);
+            fatnessTier3Count = BindSynced(config, "8 - Milestones", "Fatness Tier 3 Count", 1500,
+                "Total items eaten across every category for Fatness tier 3. Default 1500.", 1, 500000);
+
+            milestoneTier1Hp = BindSynced(config, "8 - Milestones", "Fatness Tier 1 Health", 5f,
+                "FLAT base max health added by Fatness tier 1 (total food eaten, all categories). 5 = +5 on top of vanilla's 25 base (default).", 0f, 500f);
+            milestoneTier2HpRegen = BindSynced(config, "8 - Milestones", "Fatness Tier 2 Health Regen", 0.05f,
+                "Fatness tier 2 ALTERNATES to a permanent, always-on health regen MULTIPLIER instead of flat health. 1.0 = vanilla, so this value is added to 1.0 - 0.05 = +5% (default).", 0f, 1f);
+            milestoneTier3Hp = BindSynced(config, "8 - Milestones", "Fatness Tier 3 Health", 10f,
+                "Flat base max health added by Fatness tier 3 (back to the flat reward). Default +10.", 0f, 500f);
+            milestoneTotalCap = BindSynced(config, "8 - Milestones", "Fatness Health Cap", 50f,
+                "Hard cap on total base health from the Fatness axis' flat tiers (1 and 3 only - tier 2 is a regen multiplier, uncapped separately). 50 at the defaults (5+10=15 short of it).", 0f, 1000f);
+
+            milestoneTier1CarryWeight = BindSynced(config, "8 - Milestones", "Meat Tier 1 Carry Weight", 10f,
+                "FLAT carry weight added by Meat's 1st milestone. Default +10.", 0f, 500f);
+            milestoneTier2MeatSkill = BindSynced(config, "8 - Milestones", "Meat Tier 2 Skill Bonus", 10f,
+                "Meat tier 2 ALTERNATES to a permanent, always-on Swords + Axes skill level bonus instead of carry weight, matching Warrior's Draught's own flavour. Default +10 levels.", 0f, 100f);
+            milestoneTier3CarryWeight = BindSynced(config, "8 - Milestones", "Meat Tier 3 Carry Weight", 20f,
+                "Flat carry weight added by Meat's 3rd milestone (back to the flat reward). Default +20.", 0f, 500f);
+            milestoneCarryWeightCap = BindSynced(config, "8 - Milestones", "Meat Carry Weight Cap", 40f,
+                "Hard cap on total carry weight from Meat's flat tiers (1 and 3 only). Default 40, which leaves 10 of headroom over the 30 those tiers actually grant (10+20) - raise a tier's value without also raising this and the extra is silently clipped.", 0f, 1000f);
+
+            milestoneTier1Stamina = BindSynced(config, "8 - Milestones", "Sweet Tier 1 Stamina", 5f,
+                "FLAT base stamina added by Sweet's 1st milestone. Default +5.", 0f, 200f);
+            milestoneTier2StaminaRegen = BindSynced(config, "8 - Milestones", "Sweet Tier 2 Stamina Regen", 0.05f,
+                "Sweet tier 2 ALTERNATES to a permanent, always-on stamina regen MULTIPLIER instead of flat stamina. Added to 1.0, so 0.05 = +5% (default).", 0f, 1f);
+            milestoneTier3Stamina = BindSynced(config, "8 - Milestones", "Sweet Tier 3 Stamina", 10f,
+                "Flat base stamina added by Sweet's 3rd milestone (back to the flat reward). Default +10.", 0f, 200f);
+            milestoneStaminaCap = BindSynced(config, "8 - Milestones", "Sweet Stamina Cap", 20f,
+                "Hard cap on total base stamina from Sweet's flat tiers (1 and 3 only). Default 20, which leaves 5 of headroom over the 15 those tiers actually grant (5+10).", 0f, 500f);
+
+            milestoneTier1Eitr = BindSynced(config, "8 - Milestones", "Eitr Tier 1 Eitr", 5f,
+                "FLAT max eitr added by Eitr's 1st milestone. Vanilla has no base eitr at all outside food, so this is meaningful even at low values. Default +5.", 0f, 200f);
+            milestoneTier2EitrRegen = BindSynced(config, "8 - Milestones", "Eitr Tier 2 Eitr Regen", 0.05f,
+                "Eitr tier 2 ALTERNATES to a permanent, always-on eitr regen MULTIPLIER instead of flat eitr. Added to 1.0, so 0.05 = +5% (default).", 0f, 1f);
+            milestoneTier3Eitr = BindSynced(config, "8 - Milestones", "Eitr Tier 3 Eitr", 10f,
+                "Flat max eitr added by Eitr's 3rd milestone (back to the flat reward). Default +10.", 0f, 200f);
+            milestoneEitrCap = BindSynced(config, "8 - Milestones", "Eitr Eitr Cap", 20f,
+                "Hard cap on total max eitr from Eitr's flat tiers (1 and 3 only). Default 20, which leaves 5 of headroom over the 15 those tiers actually grant (5+10).", 0f, 500f);
+
+            milestoneTier1SwimSpeed = BindSynced(config, "8 - Milestones", "Fish Tier 1 Swim Speed", 0.02f,
+                "Fish's 1st milestone: permanent, always-on swim speed bonus (additive, like Seafarer's Draught's own modifier). 0.02 = +2% (default).", 0f, 1f);
+            milestoneTier2FishSwimStamina = BindSynced(config, "8 - Milestones", "Fish Tier 2 Swim Stamina Reduction", 0.10f,
+                "Fish tier 2 ALTERNATES to a permanent, always-on FRACTION of swim stamina drain removed instead of more swim speed, matching Seafarer's/Fisherman's Friend's own flavour. 0.10 = 10% less drain (default).", 0f, 1f);
+            milestoneTier3SwimSpeed = BindSynced(config, "8 - Milestones", "Fish Tier 3 Swim Speed", 0.06f,
+                "Fish's 3rd milestone swim speed bonus (back to the flat reward, adds to tier 1's). Default +6%.", 0f, 1f);
+
+            milestoneTier1Regen = BindSynced(config, "8 - Milestones", "Vegetable Tier 1 Regen Multiplier", 1.02f,
+                "Vegetable's 1st milestone: permanent, always-on MULTIPLIER on health, stamina AND eitr regen together. 1.0 = vanilla, 1.02 = +2% (default). Each tier is its own always-on effect and multipliers compound, so earning tiers 1-3 at the defaults gives roughly +12% overall.", 1f, 2f);
+            milestoneTier2Regen = BindSynced(config, "8 - Milestones", "Vegetable Tier 2 Regen Multiplier", 1.04f,
+                "Vegetable's 2nd milestone regen multiplier. Default 1.04 (+4%).", 1f, 2f);
+            milestoneTier3Regen = BindSynced(config, "8 - Milestones", "Vegetable Tier 3 Regen Multiplier", 1.06f,
+                "Vegetable's 3rd milestone regen multiplier. Default 1.06 (+6%).", 1f, 2f);
 
             enableDrinkBuffs = BindSynced(config, "9 - Drink Buffs", "Enable Drink Buffs", true,
                 "Whatever holds your drink slot grants a buff chosen by its food category, lasting exactly as long as the drink does.");
@@ -145,15 +226,15 @@ namespace Fatty.Configuration
                 "Arcane Draught (eitr drinks): MULTIPLIER on vanilla eitr regen. 1.0 = vanilla, 1.5 = +50% (default).", 1f, 10f);
             drinkBuffStaminaRegen = BindSynced(config, "9 - Drink Buffs", "Reveler Stamina Regen Multiplier", 1.5f,
                 "Reveler's Draught (sweet drinks): MULTIPLIER on vanilla stamina regen. 1.0 = vanilla, 1.5 = +50% (default).", 1f, 10f);
-            drinkBuffMaxHealth = BindSynced(config, "9 - Drink Buffs", "Max Health Per Drink", 10f,
-                "FLAT bonus max health while a buffing drink is active. 0 = none, 10 = +10 (default). Follows the same stacking diminishing returns as food, so extra stacks add less.", 0f, 200f);
+            drinkBuffMaxHealth = BindSynced(config, "9 - Drink Buffs", "Max Health Per Drink", 5f,
+                "FLAT bonus max health while a buffing drink is active. 0 = none, 5 = +5 (default). Follows the same stacking diminishing returns as food, so extra stacks add less.", 0f, 200f);
             drinkSlotDefaultDuration = BindSynced(config, "9 - Drink Buffs", "Default Drink Duration", 600f,
                 "MINIMUM seconds a drink holds the drink slot. A health or stamina mead's own effect is over in seconds, which would leave its draught blinking on and off, so drinks are held for at least this long. Drinks that already last longer (the resistance meads) keep their own timer, and food with a real burn time is unaffected. This does NOT let you drink more often - vanilla's cooldown between meads is untouched. 600 = 10 minutes (default). Scaled by the Food Duration Multiplier like everything else.", 10f, 7200f);
 
             enableDrunk = BindSynced(config, "9 - Drink Buffs", "Enable Drunk", true,
                 "Drinking several Tasty Meads at once makes you Drunk: harder hitting and harder to stagger, but your guard suffers. See 'Drunk Stacks Required' for how many.");
-            drunkStacksRequired = BindSynced(config, "9 - Drink Buffs", "Drunk Stacks Required", 3,
-                "How many Tasty Meads must be in your drink slot at once to get Drunk. Capped by Max Food Stacks, so it can never ask for more meads than your stomach can hold. 3 = default.", 1, 20);
+            drunkStacksRequired = BindSynced(config, "9 - Drink Buffs", "Drunk Stacks Required", 6,
+                "How many Tasty Meads must be in your drink slot at once to get Drunk. Capped by Max Food Stacks, so it can never ask for more meads than your stomach can hold. 6 = default, which sits deliberately ABOVE the default Max Food Stacks of 4 - the cap pulls it back down, so Drunk means 'fill your drink slot with mead' at any stack setting rather than a fixed count that gets easy once you raise the stack limit.", 1, 20);
             drunkDamageBonus = BindSynced(config, "9 - Drink Buffs", "Drunk Damage Bonus", 0.15f,
                 "Drunk: FRACTION added to vanilla damage on all attacks. 0.0 = vanilla, 0.15 = +15% (default).", 0f, 2f);
             drunkStaggerResist = BindSynced(config, "9 - Drink Buffs", "Drunk Stagger Resistance", 0.25f,
@@ -172,18 +253,22 @@ namespace Fatty.Configuration
 
             // Note: panel placement/size, saved automatically when you drag or resize a panel.
             // Local/unsynced - where YOU like a panel is not something a server should override.
-            foodBreakdownPanelX = BindLocal(config, "10 - HUD Panels", "Food Breakdown Panel X", 200f,
-                "Saved screen X position (pixels from the left edge) of the Feast Ledger panel. Updated automatically when you drag it.");
-            foodBreakdownPanelY = BindLocal(config, "10 - HUD Panels", "Food Breakdown Panel Y", 100f,
+            foodBreakdownPanelX = BindLocal(config, "10 - HUD Panels", "Food Breakdown Panel X", 1f,
+                "Saved screen X position (pixels from the left edge) of the Feast Ledger panel. Updated automatically when you drag it. Defaults to the top-left corner - drag it wherever you like, it remembers.");
+            foodBreakdownPanelY = BindLocal(config, "10 - HUD Panels", "Food Breakdown Panel Y", 2f,
                 "Saved screen Y position (pixels from the top edge) of the Feast Ledger panel. Updated automatically when you drag it.");
-            foodBreakdownPanelWidth = BindLocalRanged(config, "10 - HUD Panels", "Food Breakdown Panel Width", 420f,
-                "Saved width of the Feast Ledger panel. Updated automatically when you resize it.", 200f, 800f);
-            foodBreakdownPanelHeight = BindLocalRanged(config, "10 - HUD Panels", "Food Breakdown Panel Height", 420f,
-                "Saved height of the Feast Ledger panel. Updated automatically when you resize it.", 150f, 600f);
-            useSegmentedStackBar = BindLocal(config, "10 - HUD Panels", "Use Segmented Stack Bar", true,
-                "How a stacked food slot shows its individual items. ON = a thin segmented bar under the icon, one segment per stacked item, dimming as each expires. OFF = a simple 'xN' count badge instead. Only one shows at a time.");
+            foodBreakdownPanelWidth = BindLocalRanged(config, "10 - HUD Panels", "Food Breakdown Panel Width", 622f,
+                "Saved width of the Feast Ledger panel. Updated automatically when you resize it. Range matches the gilt frame's own minimum/maximum - below the minimum the corner ornaments would overlap.", 340f, 900f);
+            foodBreakdownPanelHeight = BindLocalRanged(config, "10 - HUD Panels", "Food Breakdown Panel Height", 700f,
+                "Saved height of the Feast Ledger panel. Updated automatically when you resize it.", 280f, 700f);
+            useSegmentedStackBar = BindLocal(config, "10 - HUD Panels", "Use Segmented Stack Bar", false,
+                "How a stacked food slot shows its individual items. ON = a thin segmented bar under the icon, one segment per stacked item, dimming as each expires. OFF = a simple 'xN' count badge instead (default). Only one shows at a time.");
             breakdownToggleKey = config.Bind("10 - HUD Panels", "Breakdown Panel Hotkey", new KeyboardShortcut(KeyCode.F8),
                 "Opens/closes the Feast Ledger panel from the keyboard, alongside its own on-screen toggle button. Default F8.");
+            feastLedgerFontSizeDelta = config.Bind("10 - HUD Panels", "Feast Ledger Font Size Delta", 2,
+                new ConfigDescription(
+                    "FLAT points added to every Feast Ledger text size. 0 = the theme's own base sizes, 2 = +2pt (default, easier to read), negative = smaller. Takes effect on the next panel open (styles are built once).",
+                    new AcceptableValueRange<int>(-6, 12)));
         }
 
         // Binds a config entry and registers it with ServerSync so servers have authority over the value.

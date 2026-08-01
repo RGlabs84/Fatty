@@ -24,17 +24,19 @@ namespace Fatty.Patches
 
         // One food slot's group of same-prefab stack entries.
         //
-        // MaxTime is what the bar shows, and it is the only honest number there: vanilla's
-        // Player.UpdateFood decays EVERY entry in m_foods simultaneously (`food.m_time -= 1f` across
-        // the whole list), so a stack does not drain one item at a time - the slot survives until its
-        // longest-remaining entry expires. TotalTime (the sum) is kept for the breakdown panel, where
-        // it is labelled as "banked" rather than presented as a countdown, because summing parallel
-        // timers describes no real moment.
+        // ActiveTime is what the bar shows: PlayerPatches.FoodDecay_Prefix/Postfix makes only the
+        // LAST-EATEN entry of a same-prefab group actually tick down (every older stack of that food
+        // is frozen until the active one expires), so "time until this slot needs attention" is that
+        // one entry's m_time specifically - not whichever member happens to hold the largest value,
+        // since a frozen (parked) entry can sit higher than the one that's actually counting down.
+        // TotalTime (the sum) is kept for the breakdown panel, labelled "banked" - and is now a
+        // genuinely accurate reserve figure, not just a cosmetic label, since frozen stacks really are
+        // being held in reserve rather than draining in lockstep with the active one.
         internal class FoodGroup
         {
             public Player.Food Rep;
             public int Count;
-            public float MaxTime;
+            public float ActiveTime;
             public float TotalTime;
             public readonly List<PlayerPatches.FoodContribution> Members = new List<PlayerPatches.FoodContribution>();
         }
@@ -155,7 +157,10 @@ namespace Fatty.Patches
                             g = Groups[gi];
                             g.Count++;
                             g.TotalTime += f.m_time;
-                            if (f.m_time > g.MaxTime) g.MaxTime = f.m_time;
+                            // Unconditional, not Mathf.Max: foods is visited in true eaten-order (Add
+                            // only ever appends), so the last same-prefab entry visited is always the
+                            // active one - overwriting on every match lands on it by the end.
+                            g.ActiveTime = f.m_time;
                         }
                         else
                         {
@@ -173,7 +178,7 @@ namespace Fatty.Patches
                             g.Rep = f;
                             g.Count = 1;
                             g.TotalTime = f.m_time;
-                            g.MaxTime = f.m_time;
+                            g.ActiveTime = f.m_time;
                             _groupIndex[key] = gi;
                         }
                         g.Members.Add(c);
@@ -211,8 +216,9 @@ namespace Fatty.Patches
                         if (time != null)
                         {
                             // When this slot actually empties - see FoodGroup's comment on why this
-                            // is MaxTime and not the sum of the stack's timers.
-                            float t = g.MaxTime;
+                            // is ActiveTime (the entry actually ticking down) and not the sum of the
+                            // stack's timers, and not just whichever member holds the largest value.
+                            float t = g.ActiveTime;
                             time.text = t >= 60f ? Mathf.CeilToInt(t / 60f) + "m" : Mathf.FloorToInt(t) + "s";
                             time.color = Color.white; // STEADY
                         }

@@ -7,3 +7,10 @@
 *.user
 *.suo
 *.pdb
+
+# Build artifacts never belong in git - code only. Everything below is PRODUCED by
+# `dotnet build` + the release packaging step and is reproducible from source, so
+# committing it just bloats history with binaries that change every single release.
+# Authored assets (Icons/*.png, HexiumDist/icon.png) are source and DO stay tracked.
+*.zip
+HexiumDist/plugins/*.dll

@@ -25,15 +25,22 @@ namespace Fatty.Patches
     // Resizing (a gap in Njord's own panel - it only has a fixed WIDTH/HEIGHT const) is handled the
     // same way Njord handles dragging: a manual Event.current-driven Rect adjustment, just for a
     // corner grip drawn outside the window instead of the whole panel.
+    //
+    // Chrome (border/panel/text styles) comes from GiltFrameTheme - see that file's header for where
+    // it's ported from and why. The open window's frame (GiltFrameTheme.Band + corner ornaments) is
+    // considerably thicker than the old flat panel this replaced, so MinWidth/MinHeight and the
+    // default size are all larger than before - small enough to clip the ornamented corners at the
+    // OLD minimums, and GiltFrameTheme.Body() is used for the content area specifically so text is
+    // laid out inside the frame's Band+Pad inset rather than under it.
     internal static class FeastLedgerGui
     {
         private const int WindowId = 0x4A7791;
-        private const float TitleHeight = 24f;
-        private const float ToggleButtonWidth = 26f;
-        private const float ClosedWidth = 96f;
-        private const float GripSize = 14f;
-        private const float MinWidth = 200f, MaxWidth = 800f;
-        private const float MinHeight = 150f, MaxHeight = 600f;
+        private const float ToggleButtonWidth = 28f;
+        private const float ClosedWidth = 110f;
+        private const float ClosedHeight = 30f;
+        private const float GripSize = 16f;
+        private const float MinWidth = 340f, MaxWidth = 900f;
+        private const float MinHeight = 280f, MaxHeight = 700f;
 
         private static bool _initialized;
         private static bool _open;
@@ -50,24 +57,13 @@ namespace Fatty.Patches
 
         private static bool _stylesReady;
         private static GUIStyle _windowStyle;
-        private static GUIStyle _panelBoxStyle;
-        private static GUIStyle _titleBoxStyle;
-        private static GUIStyle _titleLabelStyle;
+        private static GUIStyle _closedPillStyle;
         private static GUIStyle _toggleBtnStyle;
-        private static GUIStyle _sectionStyle;
         private static GUIStyle _foldoutStyle;
-        private static GUIStyle _labelStyle;
         private static GUIStyle _smallLabelStyle;
-        private static GUIStyle _boldLabelStyle;
         private static GUIStyle _gripStyle;
 
-        // "Transparent black" per the user's own words describing what to copy from Njord.
-        private static readonly Color BgColor = new Color(0f, 0f, 0f, 0.72f);
-        private static readonly Color TitleBgColor = new Color(0.16f, 0.11f, 0.05f, 0.96f);
-        private static readonly Color GoldText = new Color(1f, 0.86f, 0.35f, 1f);
-        private static readonly Color GoldDim = new Color(0.85f, 0.72f, 0.35f, 1f);
-        private static readonly Color GoldTrim = new Color(0.82f, 0.66f, 0.22f, 0.9f);
-        private static readonly Color BodyText = new Color(0.95f, 0.9f, 0.8f, 1f);
+        private const float IconSize = 18f;
 
         private static readonly StringBuilder _sb = new StringBuilder(256);
         private static Dictionary<string, GameObject> _itemPrefabCache;
@@ -89,7 +85,7 @@ namespace Fatty.Patches
             EnsureInit();
             EnsureStyles();
 
-            Rect drawRect = _open ? _rect : new Rect(_rect.x, _rect.y, ClosedWidth, TitleHeight);
+            Rect drawRect = _open ? _rect : new Rect(_rect.x, _rect.y, ClosedWidth, ClosedHeight);
             Rect result = GUI.Window(WindowId, drawRect, DrawWindow, GUIContent.none, _windowStyle);
 
             _rect.x = result.x;
@@ -117,28 +113,41 @@ namespace Fatty.Patches
 
         private static void DrawWindow(int id)
         {
-            float w = _open ? _rect.width : ClosedWidth;
-            float h = _open ? _rect.height : TitleHeight;
-
-            GUI.Box(new Rect(0f, 0f, w, h), GUIContent.none, _panelBoxStyle);
-            GUI.Box(new Rect(0f, 0f, w, TitleHeight), GUIContent.none, _titleBoxStyle);
-
-            GUI.Label(new Rect(8f, 0f, w - ToggleButtonWidth - 12f, TitleHeight),
-                _open ? "The Feast Ledger" : "FEAST", _titleLabelStyle);
-
-            if (GUI.Button(new Rect(w - ToggleButtonWidth, 1f, ToggleButtonWidth - 2f, TitleHeight - 2f),
-                _open ? "▼" : "▲", _toggleBtnStyle))
+            if (!_open)
             {
-                _open = !_open;
+                DrawClosedPill();
+                return;
             }
 
-            // Drag region is the title bar MINUS the toggle button, so the two never fight over the
-            // same click - dragging moves the window, the button always toggles.
-            GUI.DragWindow(new Rect(0f, 0f, w - ToggleButtonWidth, TitleHeight));
+            float w = _rect.width, h = _rect.height;
+            Rect win = new Rect(0f, 0f, w, h);
 
-            if (!_open) return;
+            GiltFrameTheme.DrawPanelFill(win);
+            GiltFrameTheme.DrawFrame(win);
 
-            GUILayout.BeginArea(new Rect(8f, TitleHeight + 4f, w - 16f, h - TitleHeight - 12f));
+            // Title, inset on the right to leave room for the toggle button - GiltFrameTheme's own
+            // DrawWindow() centres the title across the FULL width, which would run it under the
+            // button, so the pieces are drawn individually here instead of via that helper.
+            Rect titleRect = new Rect(GiltFrameTheme.Band + 14f, GiltFrameTheme.Band + 8f,
+                w - GiltFrameTheme.Band * 2f - 14f - ToggleButtonWidth - 10f, GiltFrameTheme.TitleHeight - 20f);
+            GiltFrameTheme.DrawShadowed(titleRect, "THE FEAST LEDGER", GiltFrameTheme.Title);
+            GiltFrameTheme.DrawRule(new Rect(GiltFrameTheme.Band + GiltFrameTheme.Pad,
+                GiltFrameTheme.Band + GiltFrameTheme.TitleHeight - 12f,
+                w - 2f * (GiltFrameTheme.Band + GiltFrameTheme.Pad), 1f));
+
+            if (GUI.Button(new Rect(w - GiltFrameTheme.Band - ToggleButtonWidth - 6f, GiltFrameTheme.Band + 10f,
+                ToggleButtonWidth, GiltFrameTheme.TitleHeight - 20f), "▼", _toggleBtnStyle))
+            {
+                _open = false;
+            }
+
+            // Drag region is the whole title band MINUS the toggle button, so the two never fight
+            // over the same click - dragging moves the window, the button always closes it.
+            GUI.DragWindow(new Rect(0f, 0f, w - GiltFrameTheme.Band - ToggleButtonWidth - 10f,
+                GiltFrameTheme.Band + GiltFrameTheme.TitleHeight));
+
+            Rect body = GiltFrameTheme.Body(win);
+            GUILayout.BeginArea(body);
             _scroll = GUILayout.BeginScrollView(_scroll);
 
             DrawStomachSection();
@@ -152,16 +161,25 @@ namespace Fatty.Patches
             GUILayout.EndArea();
         }
 
+        private static void DrawClosedPill()
+        {
+            Rect r = new Rect(0f, 0f, ClosedWidth, ClosedHeight);
+            GUI.Box(r, GUIContent.none, _closedPillStyle);
+            if (GUI.Button(r, "▲ FEAST", _closedPillStyle))
+                _open = true;
+            GUI.DragWindow(r);
+        }
+
         // Stomach breakdown: one row per distinct food, stacked items collapsed behind a "x N -
         // empties in ..." header that expands into the per-stack detail on click, instead of always
         // printing the same food name N times.
         private static void DrawStomachSection()
         {
-            GUILayout.Label("Stomach", _sectionStyle);
+            GUILayout.Label("Stomach", GiltFrameTheme.Header);
 
             if (HudPatches.GroupCount == 0)
             {
-                GUILayout.Label("An empty stomach is no way to live.", _labelStyle);
+                GUILayout.Label("An empty stomach is no way to live.", GiltFrameTheme.Note);
                 return;
             }
 
@@ -171,11 +189,15 @@ namespace Fatty.Patches
                 if (g?.Rep == null || g.Members.Count == 0) continue;
 
                 string name = FoodBreakdownUI.ResolveDisplayName(g.Rep);
+                TryGetIcon(g.Rep, out Texture2D icon, out Rect iconUv);
 
                 if (g.Count <= 1)
                 {
                     PlayerPatches.FoodContribution only = g.Members[0];
-                    GUILayout.Label(FormatMemberLine(name + "  -  ", only), _labelStyle);
+                    GUILayout.BeginHorizontal();
+                    DrawIcon(icon, iconUv);
+                    GUILayout.Label(FormatMemberLine(name + "  -  ", only), GiltFrameTheme.Value);
+                    GUILayout.EndHorizontal();
                     continue;
                 }
 
@@ -184,11 +206,14 @@ namespace Fatty.Patches
 
                 _sb.Clear();
                 _sb.Append(expanded ? "▼ " : "▶ ").Append(name).Append(" x").Append(g.Count)
-                   .Append("  -  empties in ").Append(FoodBreakdownUI.FormatTime(g.MaxTime))
+                   .Append("  -  empties in ").Append(FoodBreakdownUI.FormatTime(g.ActiveTime))
                    .Append(",  ").Append(FoodBreakdownUI.FormatTime(g.TotalTime)).Append(" banked");
 
+                GUILayout.BeginHorizontal();
+                DrawIcon(icon, iconUv);
                 if (GUILayout.Button(_sb.ToString(), _foldoutStyle))
                     _stomachExpanded[key] = !expanded;
+                GUILayout.EndHorizontal();
 
                 if (!expanded) continue;
 
@@ -199,6 +224,30 @@ namespace Fatty.Patches
                     GUILayout.Label(FormatMemberLine(prefix, c, c.StackIndex, c.Multiplier), _smallLabelStyle);
                 }
             }
+        }
+
+        // Icons come straight off the eaten item's own Sprite (same source Hud's vanilla food slots
+        // use - see HudPatches.cs `icon.sprite = g.Rep.m_item.GetIcon()`), drawn via texcoord crop
+        // rather than GUIContent's whole-texture image slot because Valheim packs item icons into a
+        // shared atlas - drawing the whole atlas texture into a small box would show the wrong picture.
+        private static bool TryGetIcon(Player.Food food, out Texture2D tex, out Rect uv)
+        {
+            tex = null;
+            uv = default;
+
+            Sprite sprite = food?.m_item?.GetIcon();
+            if (sprite == null || sprite.texture == null) return false;
+
+            tex = sprite.texture;
+            Rect r = sprite.rect;
+            uv = new Rect(r.x / tex.width, r.y / tex.height, r.width / tex.width, r.height / tex.height);
+            return true;
+        }
+
+        private static void DrawIcon(Texture2D tex, Rect uv)
+        {
+            Rect r = GUILayoutUtility.GetRect(IconSize, IconSize, GUILayout.Width(IconSize), GUILayout.Height(IconSize));
+            if (tex != null) GUI.DrawTextureWithTexCoords(r, tex, uv);
         }
 
         private static string FormatMemberLine(string prefix, PlayerPatches.FoodContribution c)
@@ -226,30 +275,65 @@ namespace Fatty.Patches
             Player player = Player.m_localPlayer;
             if (player == null)
             {
-                GUILayout.Label("(no player)", _smallLabelStyle);
+                GUILayout.Label("(no player)", GiltFrameTheme.Note);
                 return;
             }
 
             var counts = MilestoneStore.Load(player);
-            foreach (string category in CategoryManager.BaseCategories)
+
+            // Meat/Sweet/Eitr/Fish alternate reward types across their 3 tiers (tier 1 and 3 flat,
+            // tier 2 an alternate perk) - join each earned tier's own award text rather than a single
+            // summed number, since tier 2's reward isn't the same unit as tiers 1/3's.
+            DrawAlternatingMilestoneLine("Meat", counts, "Meat");
+            DrawAlternatingMilestoneLine("Sweet", counts, "Sweet");
+            DrawAlternatingMilestoneLine("Eitr", counts, "Eitr");
+            DrawAlternatingMilestoneLine("Fish", counts, "Fish");
+
+            // Vegetable is the one category that grants the SAME reward type (regen%) on every tier,
+            // so a single cumulative total reads better than joining three separate fragments.
+            int vegEaten = MilestoneStore.Get(counts, "Vegetable");
+            int vegTiers = FoodMilestones.TiersEarned(vegEaten);
+            _sb.Clear();
+            _sb.Append("Vegetable: ").Append(vegEaten).Append(" eaten");
+            if (vegTiers > 0)
             {
-                if (!MilestoneStore.EarnsMilestones(category)) continue;
-
-                int eaten = MilestoneStore.Get(counts, category);
-                int tiers = FoodMilestones.TiersEarned(eaten);
-
-                _sb.Clear();
-                _sb.Append(category).Append(": ").Append(eaten).Append(" eaten");
-                if (tiers > 0)
-                {
-                    float hp = 0f;
-                    for (int t = 1; t <= tiers; t++) hp += FoodMilestones.HpForTier(t);
-                    _sb.Append("  -  tier ").Append(tiers).Append(", +").Append(hp.ToString("0.#")).Append(" HP");
-                }
-                GUILayout.Label(_sb.ToString(), _labelStyle);
+                float mult = 1f;
+                for (int t = 1; t <= vegTiers; t++) mult *= FoodMilestones.RegenForTier(t);
+                _sb.Append("  -  tier ").Append(vegTiers).Append(", +").Append(((mult - 1f) * 100f).ToString("0.#")).Append("% regen (health/stamina/eitr)");
             }
+            GUILayout.Label(_sb.ToString(), GiltFrameTheme.Value);
 
-            GUILayout.Label($"Total: +{FoodMilestones.TotalBonus(player):0.#} max health  (cap +{ConfigManager.milestoneTotalCap.Value:0.#})", _boldLabelStyle);
+            GUILayout.Space(4f);
+
+            int totalEaten = 0;
+            foreach (var kv in counts) totalEaten += kv.Value;
+            DrawAlternatingMilestoneLine("Fatness (all foods)", null, "Fatness", totalEatenOverride: totalEaten,
+                tiersOverride: FoodMilestones.FatnessTiersEarned(totalEaten), bold: true);
+        }
+
+        // Meat/Sweet/Eitr/Fish/Fatness all alternate between a flat reward (tiers 1/3) and a single
+        // alternate perk (tier 2) - see FoodMilestones' header comment. Builds "N eaten - tier T,
+        // <tier1 award>, <tier2 award>, ..." by joining FoodMilestones.DescribeTierAward per earned
+        // tier, so the display always matches whatever that tier actually grants without duplicating
+        // the reward logic here.
+        private static void DrawAlternatingMilestoneLine(string label, Dictionary<string, int> counts, string category,
+            int totalEatenOverride = -1, int tiersOverride = -1, bool bold = false)
+        {
+            int eaten = totalEatenOverride >= 0 ? totalEatenOverride : MilestoneStore.Get(counts, category);
+            int tiers = tiersOverride >= 0 ? tiersOverride : FoodMilestones.TiersEarned(eaten);
+
+            _sb.Clear();
+            _sb.Append(label).Append(": ").Append(eaten).Append(" eaten");
+            if (tiers > 0)
+            {
+                _sb.Append("  -  tier ").Append(tiers).Append(", ");
+                for (int t = 1; t <= tiers; t++)
+                {
+                    if (t > 1) _sb.Append(", ");
+                    _sb.Append(FoodMilestones.DescribeTierAward(category, t));
+                }
+            }
+            GUILayout.Label(_sb.ToString(), bold ? GiltFrameTheme.Header : GiltFrameTheme.Value);
         }
 
         private static void DrawFeastLogSection()
@@ -262,14 +346,14 @@ namespace Fatty.Patches
             Player player = Player.m_localPlayer;
             if (player == null)
             {
-                GUILayout.Label("(no player)", _smallLabelStyle);
+                GUILayout.Label("(no player)", GiltFrameTheme.Note);
                 return;
             }
 
             Dictionary<string, int> counts = FoodLifetimeLog.Load(player);
             if (counts.Count == 0)
             {
-                GUILayout.Label("Nothing eaten yet.", _smallLabelStyle);
+                GUILayout.Label("Nothing eaten yet.", GiltFrameTheme.Note);
                 return;
             }
 
@@ -314,10 +398,11 @@ namespace Fatty.Patches
         // Drawn and handled OUTSIDE GUI.Window (in screen space, after the window's own Rect has
         // been read back) so the drag math is plain screen-pixel delta, same as Njord's own
         // HandleDragging - just applied to size instead of position. This is the capability Njord's
-        // panel explicitly lacks (fixed WIDTH/HEIGHT consts).
+        // panel explicitly lacks (fixed WIDTH/HEIGHT consts). Inset by Band so the grip sits just
+        // inside the frame's border rather than under the corner flourish.
         private static void HandleResize()
         {
-            Rect grip = new Rect(_rect.xMax - GripSize, _rect.yMax - GripSize, GripSize, GripSize);
+            Rect grip = new Rect(_rect.xMax - GiltFrameTheme.Band - GripSize, _rect.yMax - GiltFrameTheme.Band - GripSize, GripSize, GripSize);
             GUI.Box(grip, GUIContent.none, _gripStyle);
 
             Event e = Event.current;
@@ -358,56 +443,49 @@ namespace Fatty.Patches
             if (_stylesReady) return;
             _stylesReady = true;
 
+            GiltFrameTheme.EnsureBuilt();
+
             _windowStyle = new GUIStyle();
 
-            _panelBoxStyle = new GUIStyle(GUI.skin.box) { border = new RectOffset(0, 0, 0, 0) };
-            _panelBoxStyle.normal.background = MakeTex(BgColor);
-
-            _titleBoxStyle = new GUIStyle(GUI.skin.box) { border = new RectOffset(0, 0, 0, 0) };
-            _titleBoxStyle.normal.background = MakeTex(TitleBgColor);
-
-            _titleLabelStyle = new GUIStyle(GUI.skin.label)
+            _closedPillStyle = new GUIStyle(GUI.skin.button)
             {
-                fontSize = 14,
+                fontSize = GiltFrameTheme.Header.fontSize,
                 fontStyle = FontStyle.Bold,
-                alignment = TextAnchor.MiddleLeft,
-                normal = { textColor = GoldText }
+                font = GiltFrameTheme.Header.font,
+                alignment = TextAnchor.MiddleCenter
             };
+            _closedPillStyle.normal.textColor = GiltFrameTheme.Gold;
+            _closedPillStyle.normal.background = MakeTex(new Color(0.05f, 0.045f, 0.03f, 0.95f));
+            _closedPillStyle.hover.textColor = GiltFrameTheme.GoldBright;
+            _closedPillStyle.hover.background = _closedPillStyle.normal.background;
 
             _toggleBtnStyle = new GUIStyle(GUI.skin.button)
             {
-                fontSize = 12,
+                fontSize = GiltFrameTheme.Header.fontSize,
                 fontStyle = FontStyle.Bold,
-                normal = { textColor = GoldText }
+                font = GiltFrameTheme.Header.font
             };
-
-            _sectionStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 13,
-                fontStyle = FontStyle.Bold,
-                normal = { textColor = GoldDim }
-            };
+            _toggleBtnStyle.normal.textColor = GiltFrameTheme.Gold;
+            _toggleBtnStyle.hover.textColor = GiltFrameTheme.GoldBright;
 
             // A clickable row that reads like plain text, not a button - no background in any state.
-            _foldoutStyle = new GUIStyle(GUI.skin.button)
+            _foldoutStyle = new GUIStyle(GiltFrameTheme.Header)
             {
-                fontSize = 12,
                 alignment = TextAnchor.MiddleLeft,
                 padding = new RectOffset(2, 2, 2, 2)
             };
-            _foldoutStyle.normal.textColor = GoldText;
             _foldoutStyle.normal.background = null;
-            _foldoutStyle.hover.textColor = Color.white;
+            _foldoutStyle.hover.textColor = GiltFrameTheme.GoldBright;
             _foldoutStyle.hover.background = null;
-            _foldoutStyle.active.textColor = Color.white;
+            _foldoutStyle.active.textColor = GiltFrameTheme.GoldBright;
             _foldoutStyle.active.background = null;
 
-            _labelStyle = new GUIStyle(GUI.skin.label) { fontSize = 12, normal = { textColor = BodyText } };
-            _smallLabelStyle = new GUIStyle(GUI.skin.label) { fontSize = 11, normal = { textColor = BodyText } };
-            _boldLabelStyle = new GUIStyle(GUI.skin.label) { fontSize = 12, fontStyle = FontStyle.Bold, normal = { textColor = GoldText } };
+            // Sub-detail rows (per-stack breakdown, feast log entries) - Key is the theme's own
+            // "secondary" text style, slightly smaller and muted rather than a full Value line.
+            _smallLabelStyle = new GUIStyle(GiltFrameTheme.Key) { fontSize = Mathf.Max(6, GiltFrameTheme.Key.fontSize - 1) };
 
             _gripStyle = new GUIStyle(GUI.skin.box) { border = new RectOffset(0, 0, 0, 0) };
-            _gripStyle.normal.background = MakeTex(GoldTrim);
+            _gripStyle.normal.background = MakeTex(GiltFrameTheme.Gold);
         }
 
         private static Texture2D MakeTex(Color c)

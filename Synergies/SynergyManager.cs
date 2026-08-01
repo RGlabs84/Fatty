@@ -123,9 +123,14 @@ namespace Fatty.Synergies
 
         // Time until this category's count drops below `need`.
         //
-        // Vanilla decays every stomach entry simultaneously (Player.UpdateFood does `m_time -= 1f`
-        // over the whole list), so the count falls below `need` exactly when the need-th
-        // longest-lived qualifying entry expires - i.e. the need-th largest remaining time.
+        // PlayerPatches.FoodDecay_Prefix/Postfix now makes only the last-eaten entry of each
+        // same-prefab group actually decay (older stacks of that food are frozen/parked until it
+        // expires), so the need-th largest CURRENT m_time is an approximation, not an exact
+        // prediction, whenever a matching category holds multiple stacks of the same food: a parked
+        // entry's m_time doesn't start counting down until the stack ahead of it actually expires, so
+        // the category empties later than this estimate suggests. Good enough for a cosmetic status-
+        // effect countdown (never used for the add/remove decision itself, only PublishRemaining's
+        // displayed ttl) - not worth carrying real queue state through here for.
         internal static float CategoryRemaining(List<Player.Food> foods, string category, int need)
         {
             return NthLargestRemaining(foods, prefab => CategoryManager.GetCategoryForPrefab(prefab) == category, need);

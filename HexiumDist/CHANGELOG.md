@@ -1,5 +1,97 @@
 # Changelog
 
+## [1.1.3] - Perk Sync Fix
+
+### Fixed
+
+- **Milestone perks could run on the wrong values for a whole session, and on a server could ignore
+  the server's config entirely.** Valheim's `SEMan.AddStatusEffect` stores a *copy* of a status
+  effect, not the effect itself - so once one of the permanent Getting Fat perks (Sea Legs, Well
+  Nourished, Warrior's Build, Boundless Energy, Arcane Constitution, Iron Constitution) had been
+  granted, later config changes never reached it. On a multiplayer server the server's synced values
+  usually arrive *after* the perks are already active, which meant a client could spend the entire
+  session running its own local numbers for every one of them despite these being server-synced
+  settings. They now re-read config and retune themselves in place on every meal and every respawn.
+
+  The diet-driven buffs (the four synergies and the drink draughts) were never affected in practice
+  - they're added and removed constantly as your stomach changes, so they always picked up current
+  values within seconds. It was specifically the *permanent* perks, which are granted once and never
+  removed, where a stale copy could persist indefinitely.
+
+## [1.1.2] - Fatty Gets Fatter
+
+### New
+
+- **Getting Fat now rewards six different stats, not just health.** Each diet category has its own
+  flavour: **Meat** permanently raises carry weight, **Sweet** raises base stamina, **Eitr** raises
+  max eitr, **Fish** grants a permanent swim-speed bonus, and **Vegetable** grants a permanent
+  all-round regen boost (health, stamina *and* eitr regeneration together). A brand new **Fatness**
+  tally - your total food eaten across *every* category, including food Fatty couldn't identify -
+  is what grants permanent base max health now, so getting fat still makes you tougher, it's just no
+  longer the only reward for a good diet. All six thresholds, award amounts and caps are
+  configurable in "8 - Milestones", and existing characters keep every count they've already banked.
+- **Meat, Sweet, Eitr and Fish now ALTERNATE between two different rewards across their 3 tiers**,
+  instead of granting more of the same thing three times over. Tiers 1 and 3 still grant the flat
+  pool bonus above; tier 2 grants a permanent, always-on alternate perk matching that category's own
+  flavour instead - **Eitr**: eitr regen, **Sweet**: stamina regen, **Meat**: Sword & Axe skill
+  (mirroring Warrior's Draught), **Fish**: reduced swim stamina cost (mirroring Seafarer's/
+  Fisherman's Friend). **Fatness** alternates the same way: tier 2 grants health regen instead of
+  more max health. Vegetable is the one exception and stays a flat regen% on all 3 tiers, since it
+  never owned a single pool to alternate a flat reward against. All alternate-tier amounts are their
+  own config entries in "8 - Milestones".
+- **The Feast Ledger has a full gilt picture-frame treatment**, ported from a sister project's UI
+  style at the user's request: a polished double-rail gold border with mitred acanthus-flourish
+  corners and a palmette crest top and bottom, a near-black leather panel background, and Valheim's
+  own body font wherever it's available. The Stomach breakdown also shows each food's real in-game
+  icon next to its entry instead of just a name. The panel's minimum/default size grew to comfortably
+  fit the thicker frame - existing saved panel sizes below the new minimum are clamped up on load.
+  Text size is +2pt over the base theme by default and is its own config entry ("10 - HUD Panels" ->
+  Feast Ledger Font Size Delta) if you want it larger, smaller, or back to the theme's own sizing.
+
+### Changed
+
+- The Feast Ledger's Getting Fat section now shows all six axes (Meat/Sweet/Eitr/Fish/Vegetable plus
+  the overall Fatness tally), including each axis' tier-2 alternate reward, instead of a single
+  per-category health line.
+- **The shipped defaults have been rebalanced from a full modpack playtest.** Nothing about how any
+  feature *works* changed - these are only the out-of-the-box numbers:
+  - **Stacking is tighter.** Max Food Stacks 5 -> **4**, and the diminishing-returns ladder is now
+    100% / **30%** / **20%** / **10%** (was 100/50/25/5). Fewer copies, each worth less early, but
+    the 4th-and-beyond tier is worth double what it was, so a deep stack isn't quite as dead.
+  - **Food lasts twice as long by default.** Food Duration Multiplier 1.0 -> **2.0**. This also
+    doubles the drink slot's minimum hold to 20 minutes, since that floor is scaled by the same
+    multiplier.
+  - **Drunk now means a full drink slot.** Drunk Stacks Required 3 -> **6**, which is deliberately
+    above the new Max Food Stacks of 4 and gets clamped down to it - so the requirement tracks your
+    stack limit instead of getting easier as you raise it. At the defaults, 4 Tasty Meads.
+  - **Synergies were toned down, Lumberjack's up.** Balanced Diet 3.0x -> **2.0x** regen, Sugar Rush
+    2.5x -> **2.0x** speed, Fisherman's swim stamina reduction 50% -> **80%**, Lumberjack's carry
+    weight +100 -> **+175**.
+  - **Regen scaling is more conservative.** Max Regen Scale 4.0x -> **2.0x**.
+  - **Drink health halved**, Max Health Per Drink 10 -> **5**.
+  - **Milestone caps raised above what their tiers actually grant** - Meat carry weight 30 -> **40**,
+    Sweet stamina 15 -> **20**, Eitr 15 -> **20** - so raising a single tier's award no longer gets
+    silently clipped by a cap sized exactly to the old defaults.
+  - **The Feast Ledger opens top-left at 622x700**, and stacked slots show the "xN" count badge
+    rather than the segmented bar by default. Both are per-client and still remembered once you
+    move, resize or change them.
+
+  > These apply to **new** installs only. An existing `wubarrk.fatty.cfg` keeps every value already
+  > written in it - BepInEx only writes a default for a key that isn't there yet. To adopt the new
+  > balance on an existing profile, delete that file and relaunch. On a server, the server's own
+  > config still wins for everything except the Feast Ledger panel settings.
+
+## [1.1.1] - Timer Fix
+
+### Fixed
+
+- **Stacked food no longer drains all at once.** Eating deer meat x5 used to run every stack's timer
+  in lockstep, so the whole stack vanished in a single moment instead of one item draining at a time
+  - which also meant the Feast Ledger's "banked" reserve figure wasn't actually being held in
+  reserve. Only the most-recently-eaten stack of a food now ticks down; every older stack of that
+  same food is held in reserve and takes over automatically, one at a time, as each one before it
+  runs out.
+
 ## [1.1.0]
 
 ### New

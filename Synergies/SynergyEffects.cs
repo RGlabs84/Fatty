@@ -143,6 +143,7 @@ namespace Fatty.Synergies
             {
                 SynergyEffects.Register(__instance);
                 DrinkBuffs.Register(__instance);
+                Fatty.Progression.MilestonePerks.Register(__instance);
             }
             catch (System.Exception ex)
             {
@@ -161,6 +162,7 @@ namespace Fatty.Synergies
             {
                 SynergyEffects.Register(__instance);
                 DrinkBuffs.Register(__instance);
+                Fatty.Progression.MilestonePerks.Register(__instance);
             }
             catch (System.Exception ex)
             {
