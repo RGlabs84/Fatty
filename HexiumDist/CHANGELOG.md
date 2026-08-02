@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.1.5] - Compatibility Detection Fix
+
+### Fixed
+
+- **Fatty could fail to notice another mod was installed, purely because of capital letters.** Its
+  checks for other mods matched the mod's ID letter-for-letter including case, so a mod that changed
+  the capitalisation of its own ID between releases would silently stop being detected - the mod was
+  right there, loaded and running, and Fatty treated it as absent. Two things depended on this: the
+  **Food Duration Multiplier** compatibility hand-off (Fatty steps aside and lets that mod own food
+  timers when it's present) and **Valheim Cuisine** food categorisation (its dishes get their proper
+  categories instead of falling through to name-guessing). Both now match regardless of case.
+- **The Lifetime Feast Log is readable again.** Its entries were drawn in a muted grey meant for
+  indented sub-details, which left the whole list looking greyed-out next to the Getting Fat
+  section above it. It now uses the same bright parchment text as the rest of the panel.
+
 ## [1.1.4] - Compatibility Pass
 
 ### Changed

@@ -9,7 +9,11 @@ namespace Fatty.Scanners
         // The real BepInPlugin GUID (confirmed by grepping ValheimCuisine.dll's strings table - the
         // old "com.rocker.valheimcuisine" never matched anything, so this whole block was dead code
         // and every VC_ item fell through to the word-heuristic in FoodScanner alone).
-        public static bool IsValheimCuisineInstalled => Chainloader.PluginInfos.ContainsKey("XutzBR.ValheimCuisine");
+        //
+        // Matched IGNORING CASE through PluginLookup. The GUID above was read out of a strings table, and a
+        // mod author is free to re-case their own GUID in the next release without it looking like a breaking
+        // change to them - which is exactly how this block would go quietly dead a second time.
+        public static bool IsValheimCuisineInstalled => PluginLookup.IsLoaded("XutzBR.ValheimCuisine");
 
         public static void MapHardcodedIntegrations(Dictionary<string, List<string>> categories)
         {

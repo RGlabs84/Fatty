@@ -8,7 +8,7 @@ namespace Fatty
     {
         public const string PluginGUID = "wubarrk.fatty";
         public const string PluginName = "Fatty";
-        public const string PluginVersion = "1.1.4";
+        public const string PluginVersion = "1.1.5";
 
         private readonly Harmony _harmony = new Harmony(PluginGUID);
 

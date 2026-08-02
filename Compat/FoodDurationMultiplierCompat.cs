@@ -79,7 +79,9 @@ namespace Fatty.Compat
 
             try
             {
-                if (!BepInEx.Bootstrap.Chainloader.PluginInfos.TryGetValue(PluginGuid, out var pluginInfo))
+                // Matched IGNORING CASE - Chainloader.PluginInfos is ordinal/case-sensitive, so a plugin that
+                // re-cases its own GUID between releases silently stops being detected. See PluginLookup.
+                if (!PluginLookup.TryFind(PluginGuid, out var pluginInfo))
                     return;
 
                 // pluginInfo.Instance is null until that plugin's own Awake has run. Fatty.Awake

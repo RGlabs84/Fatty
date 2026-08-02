@@ -61,6 +61,7 @@ namespace Fatty.Patches
         private static GUIStyle _toggleBtnStyle;
         private static GUIStyle _foldoutStyle;
         private static GUIStyle _smallLabelStyle;
+        private static GUIStyle _feastLogStyle;
         private static GUIStyle _gripStyle;
 
         private const float IconSize = 18f;
@@ -362,7 +363,7 @@ namespace Fatty.Patches
 
             EnsureItemCache();
             foreach (var kv in entries)
-                GUILayout.Label(ResolveLifetimeDisplayName(kv.Key) + "   x" + kv.Value, _smallLabelStyle);
+                GUILayout.Label(ResolveLifetimeDisplayName(kv.Key) + "   x" + kv.Value, _feastLogStyle);
         }
 
         private static string ResolveLifetimeDisplayName(string prefabName)
@@ -483,6 +484,12 @@ namespace Fatty.Patches
             // Sub-detail rows (per-stack breakdown, feast log entries) - Key is the theme's own
             // "secondary" text style, slightly smaller and muted rather than a full Value line.
             _smallLabelStyle = new GUIStyle(GiltFrameTheme.Key) { fontSize = Mathf.Max(6, GiltFrameTheme.Key.fontSize - 1) };
+
+            // Feast Log rows are a top-level list in their own right, not subordinate detail, so they
+            // take Value's bright parchment to match the Getting Fat lines above rather than Key's
+            // muted grey (which stays on the indented stomach sub-lines, where dimness IS the cue).
+            // Still a size down from the milestone text - this list runs long.
+            _feastLogStyle = new GUIStyle(GiltFrameTheme.Value) { fontSize = Mathf.Max(6, GiltFrameTheme.Value.fontSize - 1) };
 
             _gripStyle = new GUIStyle(GUI.skin.box) { border = new RectOffset(0, 0, 0, 0) };
             _gripStyle.normal.background = MakeTex(GiltFrameTheme.Gold);
