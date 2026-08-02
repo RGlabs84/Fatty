@@ -9,8 +9,14 @@ namespace Fatty.Synergies
     public static class SynergyManager
     {
         // Note: Re-evaluate synergies whenever food is updated.
+        //
+        // Priority.Last deliberately: PlayerPatches.FoodDecay_Postfix (Priority.First) undoes
+        // vanilla's decrement on every frozen stack, and reading m_foods BEFORE that restore lands
+        // sees values that are one second low for exactly one frame per second. That is what made
+        // every countdown here blip down by a second and snap straight back.
         [HarmonyPatch(typeof(Player), "UpdateFood")]
         [HarmonyPostfix]
+        [HarmonyPriority(Priority.Last)]
         public static void Player_UpdateFood_Postfix(Player __instance, ref List<Player.Food> ___m_foods)
         {
             try
@@ -19,6 +25,8 @@ namespace Fatty.Synergies
 
                 SEMan seman = __instance.GetSEMan();
                 if (seman == null) return;
+
+                RefreshProjection(___m_foods);
 
                 bool synergiesEnabled = ConfigManager.enableSynergies.Value;
 
@@ -31,13 +39,13 @@ namespace Fatty.Synergies
 
                 // Each synergy ends the moment ANY of its requirements stops being met, so its
                 // remaining time is the soonest of them - see NthLargestRemaining.
-                ApplySynergy(seman, SynergyEffects.BalancedDietHash, balanced,
+                ApplyTimedEffect(seman, SynergyEffects.BalancedDietHash, balanced,
                     Mathf.Min(CategoryRemaining(___m_foods, "Meat", 1), CategoryRemaining(___m_foods, "Vegetable", 1)));
-                ApplySynergy(seman, SynergyEffects.SugarRushHash, sugarRush,
+                ApplyTimedEffect(seman, SynergyEffects.SugarRushHash, sugarRush,
                     Mathf.Min(CategoryRemaining(___m_foods, "Sweet", 3), DrinkRemaining(___m_foods, 1)));
-                ApplySynergy(seman, SynergyEffects.FishermanHash, fisherman,
+                ApplyTimedEffect(seman, SynergyEffects.FishermanHash, fisherman,
                     Mathf.Min(CategoryRemaining(___m_foods, "Fish", 2), CategoryRemaining(___m_foods, "Vegetable", 1)));
-                ApplySynergy(seman, SynergyEffects.LumberjackHash, lumberjack,
+                ApplyTimedEffect(seman, SynergyEffects.LumberjackHash, lumberjack,
                     Mathf.Min(CategoryRemaining(___m_foods, "Meat", 3), DrinkRemaining(___m_foods, 1)));
 
                 // Mead & drink buffs ride the same add/remove model - active exactly while a
@@ -79,20 +87,56 @@ namespace Fatty.Synergies
             return counts;
         }
 
-        // Adds or removes a synergy effect so it exactly tracks whether the diet qualifies, and
-        // publishes how long it has left so the HUD can draw a countdown.
-        private static void ApplySynergy(SEMan seman, int nameHash, bool qualified, float remaining)
+        // ------------------------------------------------------------------
+        // Shared lifecycle for every food-driven Fatty effect - the four synergies here plus the
+        // drink draughts and Drunk in DrinkBuffs. Adds/removes the effect so it exactly tracks
+        // whether the diet qualifies, publishes how long it has left so the HUD can draw a
+        // countdown, and enforces the configured duration ceiling.
+        //
+        // The ceiling ("Max Effect Duration"): Fatty's own duration multiplier and banked stacks
+        // make a single activation last far longer than anything vanilla grants, so an activation is
+        // cut off once it has been up for that long even though the diet still qualifies. Re-adding
+        // it on the very next frame would make the ceiling meaningless, so a spent effect is locked
+        // out until its recipe actually stops being met - that lapse is what re-arms it.
+        //
+        // A plain static set is enough for the lockout: Player.UpdateStats, UpdateFood's only
+        // per-frame caller, runs solely for m_localPlayer (confirmed by decompile).
+        // ------------------------------------------------------------------
+        private static readonly HashSet<int> _spent = new HashSet<int>();
+
+        internal static void ApplyTimedEffect(SEMan seman, int nameHash, bool qualified, float remaining)
         {
             if (nameHash == 0) return; // effect not registered yet (ObjectDB not ready)
 
-            bool active = seman.HaveStatusEffect(nameHash);
+            if (!qualified)
+            {
+                if (seman.HaveStatusEffect(nameHash)) seman.RemoveStatusEffect(nameHash, false);
+                _spent.Remove(nameHash); // recipe lapsed - the ceiling re-arms
+                return;
+            }
 
-            if (qualified && !active)
-                seman.AddStatusEffect(nameHash, true);
-            else if (!qualified && active)
+            // 0 = no ceiling. GetDuration() is the live effect's own m_time, i.e. seconds since it
+            // was granted, so no separate start-time bookkeeping is needed.
+            float cap = Mathf.Max(0f, ConfigManager.maxEffectDuration.Value) * 60f;
+            StatusEffect live = seman.GetStatusEffect(nameHash);
+
+            if (live != null && cap > 0f && live.GetDuration() >= cap)
+            {
                 seman.RemoveStatusEffect(nameHash, false);
+                _spent.Add(nameHash);
+                return;
+            }
 
-            if (qualified) PublishRemaining(seman, nameHash, remaining);
+            if (live == null)
+            {
+                if (_spent.Contains(nameHash)) return; // ceiling already spent this qualification
+                seman.AddStatusEffect(nameHash, true);
+                live = seman.GetStatusEffect(nameHash);
+                if (live == null) return;
+            }
+
+            if (cap > 0f) remaining = Mathf.Min(remaining, cap - live.GetDuration());
+            PublishRemaining(live, remaining);
         }
 
         // ------------------------------------------------------------------
@@ -111,26 +155,60 @@ namespace Fatty.Synergies
         // Must be the LIVE instance from SEMan, not the ObjectDB template: AddStatusEffect stores a
         // Clone(), so writing the template would change nothing on screen.
         // ------------------------------------------------------------------
-        internal static void PublishRemaining(SEMan seman, int nameHash, float remaining)
-        {
-            if (remaining <= 0f) return;
+        // Floored rather than skipped when it reaches zero. Leaving m_ttl unwritten would strand the
+        // last value published, and once m_time overtook it IsDone() (`m_time > m_ttl`) would expire
+        // the effect out from under Fatty's own add/remove lifecycle - which at the duration ceiling
+        // is worse than cosmetic: the effect would come back on the very next frame with a fresh
+        // GetDuration() of 0, handing it a brand new full-length window instead of the lockout.
+        private const float MinPublishedTtl = 0.5f;
 
-            StatusEffect live = seman.GetStatusEffect(nameHash);
+        private static void PublishRemaining(StatusEffect live, float remaining)
+        {
             if (live == null) return;
 
-            live.m_ttl = remaining + live.GetDuration();
+            live.m_ttl = Mathf.Max(remaining, MinPublishedTtl) + live.GetDuration();
+        }
+
+        // ------------------------------------------------------------------
+        // Projected expiry, one entry per stomach slot.
+        //
+        // Sequential stack decay (PlayerPatches.FoodDecay_Prefix/Postfix) means only the LAST entry
+        // of a same-prefab group actually ticks down - every older stack of that prefab is frozen
+        // until the one ahead of it expires. So a frozen entry's raw m_time is not "time left" at
+        // all: it is a constant that never moves, which is exactly why a countdown built straight on
+        // it sat still instead of counting down.
+        //
+        // An entry's REAL expiry is the sum of m_time from itself through the end of its own prefab
+        // group, since every older stack has to wait out everything newer than it. Walking the list
+        // backwards accumulates precisely that in one pass. Reused static buffers because this runs
+        // every frame from UpdateFood, on the hot path.
+        // ------------------------------------------------------------------
+        private static readonly List<float> _projected = new List<float>();
+        private static readonly Dictionary<string, float> _projectionAcc = new Dictionary<string, float>();
+        private static readonly List<float> _sortBuffer = new List<float>();
+
+        internal static void RefreshProjection(List<Player.Food> foods)
+        {
+            _projected.Clear();
+            _projectionAcc.Clear();
+            if (foods == null) return;
+
+            for (int i = 0; i < foods.Count; i++) _projected.Add(0f);
+
+            for (int i = foods.Count - 1; i >= 0; i--)
+            {
+                Player.Food food = foods[i];
+                if (food == null || food.m_item == null) continue;
+
+                string prefab = Patches.PlayerPatches.ResolvePrefabName(food);
+                _projectionAcc.TryGetValue(prefab, out float queued);
+                queued += food.m_time;
+                _projectionAcc[prefab] = queued;
+                _projected[i] = queued;
+            }
         }
 
         // Time until this category's count drops below `need`.
-        //
-        // PlayerPatches.FoodDecay_Prefix/Postfix now makes only the last-eaten entry of each
-        // same-prefab group actually decay (older stacks of that food are frozen/parked until it
-        // expires), so the need-th largest CURRENT m_time is an approximation, not an exact
-        // prediction, whenever a matching category holds multiple stacks of the same food: a parked
-        // entry's m_time doesn't start counting down until the stack ahead of it actually expires, so
-        // the category empties later than this estimate suggests. Good enough for a cosmetic status-
-        // effect countdown (never used for the add/remove decision itself, only PublishRemaining's
-        // displayed ttl) - not worth carrying real queue state through here for.
         internal static float CategoryRemaining(List<Player.Food> foods, string category, int need)
         {
             return NthLargestRemaining(foods, prefab => CategoryManager.GetCategoryForPrefab(prefab) == category, need);
@@ -144,20 +222,22 @@ namespace Fatty.Synergies
         internal static float NthLargestRemaining(List<Player.Food> foods, System.Func<string, bool> match, int need)
         {
             if (foods == null || need < 1) return 0f;
+            if (_projected.Count != foods.Count) RefreshProjection(foods);
 
-            var times = new List<float>();
-            foreach (var food in foods)
+            _sortBuffer.Clear();
+            for (int i = 0; i < foods.Count; i++)
             {
+                Player.Food food = foods[i];
                 if (food == null || food.m_item == null) continue;
                 if (!match(Patches.PlayerPatches.ResolvePrefabName(food))) continue;
-                times.Add(food.m_time);
+                _sortBuffer.Add(_projected[i]);
             }
 
-            if (times.Count < need) return 0f;
+            if (_sortBuffer.Count < need) return 0f;
 
-            times.Sort();
-            times.Reverse();
-            return times[need - 1];
+            _sortBuffer.Sort();
+            _sortBuffer.Reverse();
+            return _sortBuffer[need - 1];
         }
     }
 }

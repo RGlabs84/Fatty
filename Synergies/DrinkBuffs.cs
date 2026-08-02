@@ -206,18 +206,19 @@ namespace Fatty.Synergies
 
             foreach (var kvp in _hashByCategory)
             {
-                bool active = enabled && kvp.Key == activeCategory;
-                ApplyEffect(seman, kvp.Value, active);
+                string cat = kvp.Key;
+                bool active = enabled && cat == activeCategory;
 
                 // The draught lasts exactly as long as a drink of this category holds the slot -
-                // i.e. until the longest-lived one expires (every entry decays in parallel).
-                if (active)
-                {
-                    string cat = kvp.Key;
-                    float remaining = SynergyManager.NthLargestRemaining(foods,
-                        prefab => CategoryManager.IsDrinkPrefab(prefab) && CategoryManager.GetCategoryForPrefab(prefab) == cat, 1);
-                    SynergyManager.PublishRemaining(seman, kvp.Value, remaining);
-                }
+                // i.e. until the last of them expires. NthLargestRemaining projects Fatty's
+                // sequential stack decay, so banked stacks of the same drink are counted one after
+                // another rather than in parallel.
+                float remaining = active
+                    ? SynergyManager.NthLargestRemaining(foods,
+                        prefab => CategoryManager.IsDrinkPrefab(prefab) && CategoryManager.GetCategoryForPrefab(prefab) == cat, 1)
+                    : 0f;
+
+                SynergyManager.ApplyTimedEffect(seman, kvp.Value, active, remaining);
             }
 
             // Drunk: Tasty Mead only, and only once you've committed enough of the drink slot to it.
@@ -231,25 +232,16 @@ namespace Fatty.Synergies
             bool drunk = enabled
                 && ConfigManager.enableDrunk.Value
                 && tastyMeadStacks >= required;
-            ApplyEffect(seman, DrunkHash, drunk);
 
             // Drunk ends when the stack count falls back under the threshold, which is when the
-            // required-th longest-lived Tasty Mead expires.
-            if (drunk)
-            {
-                float remaining = SynergyManager.NthLargestRemaining(foods,
-                    prefab => prefab == TastyMeadPrefab, required);
-                SynergyManager.PublishRemaining(seman, DrunkHash, remaining);
-            }
-        }
+            // required-th longest-lived Tasty Mead expires. Every stack here is the same prefab, so
+            // they expire strictly one after another - the projected times NthLargestRemaining
+            // returns, not their raw m_time, which for a parked stack never moves at all.
+            float drunkRemaining = drunk
+                ? SynergyManager.NthLargestRemaining(foods, prefab => prefab == TastyMeadPrefab, required)
+                : 0f;
 
-        private static void ApplyEffect(SEMan seman, int nameHash, bool qualified)
-        {
-            if (nameHash == 0) return; // not registered yet (ObjectDB not ready)
-
-            bool active = seman.HaveStatusEffect(nameHash);
-            if (qualified && !active) seman.AddStatusEffect(nameHash, true);
-            else if (!qualified && active) seman.RemoveStatusEffect(nameHash, false);
+            SynergyManager.ApplyTimedEffect(seman, DrunkHash, drunk, drunkRemaining);
         }
 
         // ------------------------------------------------------------------

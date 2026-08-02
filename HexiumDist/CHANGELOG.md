@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.1.6] - Buff Timers Fixed, and a Ceiling On Them
+
+### New
+
+- **Max Effect Duration - a hard ceiling on how long a Fatty buff can ride.** Between the 2x food
+  duration and four banked stacks, a single activation could sit on you for well over an hour, which
+  is not what these were balanced for. Every food-driven Fatty effect - the four synergies, the four
+  drink draughts and Drunk - is now capped at **30 minutes by default** (*4 - Synergies*, server-
+  synced). When an effect hits the ceiling it ends even if your diet still qualifies, and it will not
+  come back until its recipe stops being met and is met again, so you cannot simply keep topping the
+  same buff up forever. Set it to **0** if you want the old uncapped behaviour. The permanent Getting
+  Fat perks are progression, not buffs, and are never touched by this.
+
+### Fixed
+
+- **Buff countdowns sat still instead of counting down, twitching down a second and snapping back
+  once a second.** Two separate faults, both now closed:
+  - The countdown was reading the timer of a *parked* food stack. Fatty burns stacks of the same food
+    one after another rather than all at once, so an older stack's timer is frozen solid until the one
+    ahead of it runs out - a number that by design never moves. Any buff whose requirement landed on a
+    parked stack therefore showed a countdown that never counted. **Drunk got this every single time**,
+    since it always asks for several of the same mead, and Sugar Rush, Lumberjack's Feast and
+    Fisherman's Friend got it whenever you met them with repeats of one food. Countdowns now add up
+    the whole queue, so they show your real reserve - and actually tick down.
+  - The once-a-second twitch was an ordering fault inside Fatty: the countdown was reading your
+    stomach in the middle of the same-food-stack bookkeeping, catching every parked stack a second
+    short for a single frame before it was put back. The two now run in a fixed order.
+
 ## [1.1.5] - Compatibility Detection Fix
 
 ### Fixed

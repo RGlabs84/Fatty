@@ -150,7 +150,9 @@ Eating the right combination of food categories triggers a unique, powerful **St
 | **🔵 Fisherman's Friend** | 2 Fish + 1 Veggie | Improved swim speed & reduced swim stamina use |
 | **🟤 Lumberjack's Feast** | 3 Meat + 1 Drink | Bonus carry weight & woodcutting damage |
 
-Its status icon shows a **live countdown** to when your diet will actually stop qualifying — eat more of what's about to run out and the timer pushes back out.
+Its status icon shows a **live countdown** to when your diet will actually stop qualifying — eat more of what's about to run out and the timer pushes back out. Banked stacks of the same food are counted **in sequence**, matching how they actually burn down, so the countdown reflects your real reserve rather than a single slot's timer.
+
+**⏳ Max Effect Duration.** Between the 2× food duration and four banked stacks, one activation could otherwise sit on you for well over an hour, so every food-driven Fatty effect — the four synergies, the four draughts and Drunk — is capped at **30 minutes by default** (*4 - Synergies*). When an effect hits the ceiling it ends even if your diet still qualifies, and it won't return until its recipe stops being met and is met again. Set it to **0** for no ceiling. Milestone perks are permanent progression and are never affected.
 
 ### 🍻 Mead & Drink Buffs
 

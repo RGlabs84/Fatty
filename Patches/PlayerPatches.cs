@@ -672,8 +672,13 @@ namespace Fatty.Patches
             }
         }
 
+        // Priority.First so the frozen entries are back to their real values before any other
+        // postfix reads m_foods - SynergyManager's countdown in particular, which is pinned to
+        // Priority.Last for exactly this reason. Reading mid-restore sees every frozen stack one
+        // second low for a single frame per second.
         [HarmonyPatch(typeof(Player), "UpdateFood")]
         [HarmonyPostfix]
+        [HarmonyPriority(Priority.First)]
         public static void FoodDecay_Postfix()
         {
             try

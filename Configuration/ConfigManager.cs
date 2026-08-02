@@ -92,6 +92,7 @@ namespace Fatty.Configuration
 
         // Note: Synergy configs
         public static ConfigEntry<bool> enableSynergies;
+        public static ConfigEntry<float> maxEffectDuration;
         public static ConfigEntry<float> balancedDietRegen;
         public static ConfigEntry<float> sugarRushSpeedBonus;
         public static ConfigEntry<float> fishermanSwimStaminaReduction;
@@ -127,6 +128,8 @@ namespace Fatty.Configuration
 
             enableSynergies = BindSynced(config, "4 - Synergies", "Enable Synergies", true,
                 "Enables the dietary synergy status effects (Balanced Diet, Sugar Rush, Fisherman's Friend, Lumberjack's Feast).");
+            maxEffectDuration = BindSynced(config, "4 - Synergies", "Max Effect Duration", 30f,
+                "Hard ceiling, in MINUTES, on how long ONE activation of any food-driven Fatty status effect can last - the four synergies above, the four drink draughts and Drunk. Fatty's own duration multiplier and banked food stacks otherwise push a single activation well past an hour. On reaching the ceiling the effect ends even if your diet still qualifies, and it stays gone until its recipe stops being met and is met again. 30 = 30 minutes (default), 0 = no ceiling. Milestone perks are permanent progression and are never touched by this.", 0f, 240f);
             balancedDietRegen = BindSynced(config, "4 - Synergies", "Balanced Diet Regen Multiplier", 2f,
                 "Balanced Diet (1 Meat + 1 Veggie): MULTIPLIER on vanilla health & stamina regen. 1.0 = vanilla, 2.0 = 2x vanilla / +100% (default).", 1f, 10f);
             sugarRushSpeedBonus = BindSynced(config, "4 - Synergies", "Sugar Rush Speed Multiplier", 2f,
