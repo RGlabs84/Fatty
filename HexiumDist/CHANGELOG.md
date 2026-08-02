@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.1.7] - Hotfix: Feast Ledger Readability
+
+### Fixed
+
+- **The per-stack lines in the Feast Ledger's Stomach section were greyed out.** Expanding a stacked
+  food showed its per-stack breakdown in a muted grey meant for minor sub-details, which left the
+  densest and most useful text in the panel as the hardest thing on it to read - and mismatched
+  against the Getting Fat and Lifetime Feast Log sections right below it, which are drawn in bright
+  parchment. They now use that same bright parchment. The indent, the numbering and a slightly
+  smaller size already mark them as detail; the dimming was doing nothing but hurting legibility.
+  This is the same fix the Lifetime Feast Log got in 1.1.5 - these lines were simply missed at the
+  time.
+
 ## [1.1.6] - Buff Timers Fixed, and a Ceiling On Them
 
 ### New

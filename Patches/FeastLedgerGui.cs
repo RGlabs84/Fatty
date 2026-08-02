@@ -481,14 +481,17 @@ namespace Fatty.Patches
             _foldoutStyle.active.textColor = GiltFrameTheme.GoldBright;
             _foldoutStyle.active.background = null;
 
-            // Sub-detail rows (per-stack breakdown, feast log entries) - Key is the theme's own
-            // "secondary" text style, slightly smaller and muted rather than a full Value line.
-            _smallLabelStyle = new GUIStyle(GiltFrameTheme.Key) { fontSize = Mathf.Max(6, GiltFrameTheme.Key.fontSize - 1) };
+            // Per-stack stomach rows. Value's bright parchment, NOT Key's muted grey: the indent and
+            // the "1. 2. 3." numbering already say these are sub-detail, so dimming them on top of
+            // that just made the expanded breakdown - the densest, most useful text in the panel -
+            // the hardest thing on it to read. Same call as the Feast Log below, which was moved off
+            // Key for exactly this reason in 1.1.5; leaving these behind is what left the two
+            // sections mismatched. Still a size down, which is enough of a hierarchy cue on its own.
+            _smallLabelStyle = new GUIStyle(GiltFrameTheme.Value) { fontSize = Mathf.Max(6, GiltFrameTheme.Value.fontSize - 1) };
 
             // Feast Log rows are a top-level list in their own right, not subordinate detail, so they
-            // take Value's bright parchment to match the Getting Fat lines above rather than Key's
-            // muted grey (which stays on the indented stomach sub-lines, where dimness IS the cue).
-            // Still a size down from the milestone text - this list runs long.
+            // take Value's bright parchment to match the Getting Fat lines above. Still a size down
+            // from the milestone text - this list runs long.
             _feastLogStyle = new GUIStyle(GiltFrameTheme.Value) { fontSize = Mathf.Max(6, GiltFrameTheme.Value.fontSize - 1) };
 
             _gripStyle = new GUIStyle(GUI.skin.box) { border = new RectOffset(0, 0, 0, 0) };
