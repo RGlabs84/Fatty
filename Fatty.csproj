@@ -4,7 +4,7 @@
     <TargetFramework>net48</TargetFramework>
     <AssemblyName>Fatty</AssemblyName>
     <Description>A Valheim food overhaul mod with stacking, synergies, and more.</Description>
-    <Version>1.1.7</Version>
+    <Version>1.1.8</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
     <RootNamespace>Fatty</RootNamespace>
@@ -56,6 +56,10 @@
     </Reference>
     <Reference Include="UnityEngine.IMGUIModule">
       <HintPath>..\libs-Tools\UnityEngine.IMGUIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>..\libs-Tools\UnityEngine.InputLegacyModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="UnityEngine.TextRenderingModule">

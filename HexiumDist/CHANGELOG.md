@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.1.8] - Hotfix: Feast Ledger Drag/Position/Wrapping
+
+### Fixed
+
+- **The Feast Ledger rewrote its whole config file to disk on every frame of a drag.** Moving the
+  panel wrote its X/Y position to config every single frame the mouse moved rather than once the
+  drag ended, and BepInEx saves the whole config file to disk on every settings change. Position is
+  now only committed once you let go of the mouse.
+- **A panel position saved on a monitor you no longer have could strand it off-screen for good.**
+  There was no clamp on the restored position and no in-game way to drag it back. The panel now
+  keeps at least its title bar on screen, both on load and live.
+- **Some "Getting Fat" milestone lines could run off the edge of the panel instead of wrapping.**
+  The tier-3 lines for Meat/Sweet/Eitr/Fish join two full reward descriptions and could exceed the
+  panel width, especially at the minimum window size; they now wrap onto a second line instead of
+  getting clipped.
+
 ## [1.1.7] - Hotfix: Feast Ledger Readability
 
 ### Fixed

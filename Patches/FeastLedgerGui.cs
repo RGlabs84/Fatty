@@ -46,6 +46,9 @@ namespace Fatty.Patches
         private static bool _open;
         private static Rect _rect;
 
+        // Window position is committed to config on drag RELEASE, not per frame - see CommitPositionIfSettled.
+        private static Vector2 _committedPos = new Vector2(float.NaN, float.NaN);
+
         private static bool _resizing;
         private static Vector2 _resizeStartMouse;
         private static Vector2 _resizeStartSize;
@@ -63,6 +66,8 @@ namespace Fatty.Patches
         private static GUIStyle _smallLabelStyle;
         private static GUIStyle _feastLogStyle;
         private static GUIStyle _gripStyle;
+        private static GUIStyle _wrappingValueStyle;
+        private static GUIStyle _wrappingHeaderStyle;
 
         private const float IconSize = 18f;
 
@@ -98,6 +103,9 @@ namespace Fatty.Patches
                 _rect.height = result.height;
                 HandleResize();
             }
+
+            ClampWindowToScreen();
+            CommitPositionIfSettled();
         }
 
         private static void EnsureInit()
@@ -108,6 +116,33 @@ namespace Fatty.Patches
             float w = Mathf.Clamp(ConfigManager.foodBreakdownPanelWidth.Value, MinWidth, MaxWidth);
             float h = Mathf.Clamp(ConfigManager.foodBreakdownPanelHeight.Value, MinHeight, MaxHeight);
             _rect = new Rect(ConfigManager.foodBreakdownPanelX.Value, ConfigManager.foodBreakdownPanelY.Value, w, h);
+
+            // A persisted position from a larger monitor (or the default position on a smaller screen)
+            // would put the window entirely off-screen, where it cannot be dragged back - and the
+            // position persists, so there is no in-game way to recover it.
+            ClampWindowToScreen();
+            _committedPos = new Vector2(_rect.x, _rect.y);
+        }
+
+        // Keeps at least the draggable title band on screen in both axes.
+        private static void ClampWindowToScreen()
+        {
+            float minVisible = GiltFrameTheme.Band + GiltFrameTheme.TitleHeight;
+            _rect.x = Mathf.Clamp(_rect.x, minVisible - _rect.width, Screen.width - minVisible);
+            _rect.y = Mathf.Clamp(_rect.y, 0f, Screen.height - minVisible);
+        }
+
+        // BepInEx's ConfigFile defaults to SaveOnConfigSet, and ConfigEntry.Value fires SettingChanged
+        // on every change, so assigning every frame (the old behaviour, at the tail of HandleResize)
+        // rewrote the whole .cfg to disk once per frame for the length of a drag.
+        private static void CommitPositionIfSettled()
+        {
+            if (Input.GetMouseButton(0)) return;                       // still dragging
+            if (_committedPos.x == _rect.x && _committedPos.y == _rect.y) return;
+
+            _committedPos = new Vector2(_rect.x, _rect.y);
+            ConfigManager.foodBreakdownPanelX.Value = _rect.x;
+            ConfigManager.foodBreakdownPanelY.Value = _rect.y;
         }
 
         // ---- window body -------------------------------------------------
@@ -302,7 +337,7 @@ namespace Fatty.Patches
                 for (int t = 1; t <= vegTiers; t++) mult *= FoodMilestones.RegenForTier(t);
                 _sb.Append("  -  tier ").Append(vegTiers).Append(", +").Append(((mult - 1f) * 100f).ToString("0.#")).Append("% regen (health/stamina/eitr)");
             }
-            GUILayout.Label(_sb.ToString(), GiltFrameTheme.Value);
+            GUILayout.Label(_sb.ToString(), _wrappingValueStyle);
 
             GUILayout.Space(4f);
 
@@ -334,7 +369,7 @@ namespace Fatty.Patches
                     _sb.Append(FoodMilestones.DescribeTierAward(category, t));
                 }
             }
-            GUILayout.Label(_sb.ToString(), bold ? GiltFrameTheme.Header : GiltFrameTheme.Value);
+            GUILayout.Label(_sb.ToString(), bold ? _wrappingHeaderStyle : _wrappingValueStyle);
         }
 
         private static void DrawFeastLogSection()
@@ -430,11 +465,6 @@ namespace Fatty.Patches
                 ConfigManager.foodBreakdownPanelHeight.Value = _rect.height;
                 e.Use();
             }
-
-            // Position is written on every frame the window moved rather than gated on mouse-up,
-            // since GUI.Window's own drag doesn't hand back a discrete "drag ended" event here.
-            ConfigManager.foodBreakdownPanelX.Value = _rect.x;
-            ConfigManager.foodBreakdownPanelY.Value = _rect.y;
         }
 
         // ---- styles ----------------------------------------------------------
@@ -496,6 +526,14 @@ namespace Fatty.Patches
 
             _gripStyle = new GUIStyle(GUI.skin.box) { border = new RectOffset(0, 0, 0, 0) };
             _gripStyle.normal.background = MakeTex(GiltFrameTheme.Gold);
+
+            // Every GiltFrameTheme text style is wordWrap=false/clipping=Clip (CalcSize measures the
+            // string as one unwrapped line). Milestone lines join per-tier award text and DO run past
+            // the panel width at tier 3 for Meat/Sweet/Eitr/Fish - a wrapping variant is needed here
+            // or they just clip instead of wrapping. Safe inside GUILayout: it re-measures each style's
+            // CalcHeight for the actual layout width every frame, so wrapped rows grow correctly.
+            _wrappingValueStyle = new GUIStyle(GiltFrameTheme.Value) { wordWrap = true };
+            _wrappingHeaderStyle = new GUIStyle(GiltFrameTheme.Header) { wordWrap = true };
         }
 
         private static Texture2D MakeTex(Color c)
