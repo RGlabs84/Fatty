@@ -26,12 +26,36 @@ namespace Fatty.Configuration
         //   5 = solid-food Eitr dominance relaxed from beating BOTH health and stamina to beating
         //       EITHER one, so foods that only edge out one of the two are correctly filed as Eitr
         //       instead of Meat/Fish/Vegetable/Sweet. v4 files under-classified those.
-        public const int CurrentDataVersion = 5;
+        //   6 = "Vegetable" renamed to "Produce" and widened to cover fruit, AND the classifier
+        //       learned to see berries at all. Whole-word matching could never match a berry -
+        //       "Raspberry" is one word "raspberry", which is not "berry" - so every raw berry in
+        //       the game was filed Unknown and earned no milestone. v5 files carry both the old
+        //       category name and those Unknowns, neither repairable in place.
+        //   7 = keyword matching now tolerates plurals ("carrots" -> "carrot") and compounds
+        //       ("cupcake" -> "cake", "misthare" -> "hare", "svinstew" -> "stew"), same failure mode
+        //       the berry fix in v6 addressed for one word only. On a fully modded setup that was 85
+        //       real foods sitting in Unknown; v6 files still carry every one of them.
+        public const int CurrentDataVersion = 7;
 
         // The diet categories. These drive synergies, milestones and drink buffs - NOT slot
         // allocation. "Drink" is deliberately absent: whether something takes the dedicated drink
         // slot is the separate IsDrink flag, so an eitr mead can be Eitr AND a drink at once.
-        public static readonly string[] BaseCategories = { "Meat", "Vegetable", "Sweet", "Fish", "Eitr", "Unknown" };
+        //
+        // "Produce" covers vegetables AND fruit as a single diet (it was "Vegetable" through v5).
+        // Fruit is not its own category: a berry and a carrot are both raw forage, they pull the
+        // same recipes, and splitting them would have meant a seventh milestone axis and a seventh
+        // draught to balance for what is really one dietary idea. Prepared sweets made FROM fruit
+        // stay Sweet - FoodScanner tests SweetWords before ProduceWords precisely so that holds.
+        public static readonly string[] BaseCategories = { "Meat", "Produce", "Sweet", "Fish", "Eitr", "Unknown" };
+
+        // v5-and-earlier category names -> their v6 equivalent. Used when rebuilding a character's
+        // lifetime milestone counts, whose keys are category names written at the time of eating and
+        // therefore outlive any rename in the food data. See MilestoneStore.RebuildFromLifetimeLog.
+        public static string CanonicalCategory(string category)
+        {
+            if (string.IsNullOrWhiteSpace(category)) return UnknownCategory;
+            return category == "Vegetable" ? "Produce" : category;
+        }
 
         // Fallback diet for anything the scanner can't identify. Previously everything unknown was
         // called "Vegetable", which quietly made "1 Veggie" satisfiable by 293 of 491 items and
@@ -195,7 +219,7 @@ namespace Fatty.Configuration
         }
 
         // Hand-authored "this takes the drink slot", leaving the diet to the scanner - so
-        // VC_ShroomBeer can be a Vegetable drink and VC_ElivagarTea an Eitr drink without either
+        // VC_ShroomBeer can be a Produce drink and VC_ElivagarTea an Eitr drink without either
         // being spelled out by hand.
         public static void MarkHardcodedDrink(string prefabName)
         {
@@ -220,8 +244,12 @@ namespace Fatty.Configuration
             // Goes through AddToCategory rather than assigning the lists directly, so the reverse
             // index is built too.
             AddAll("Meat", "CookedMeat", "NeckTailGrilled", "DeerMeatCooked", "SerpentMeatCooked", "LoxMeatCooked", "WolfMeatCooked", "BugMeatCooked");
-            AddAll("Vegetable", "Turnip", "Carrot", "Onion", "Mushroom", "MushroomYellow", "MushroomBlue");
-            AddAll("Sweet", "Raspberry", "Blueberry", "Cloudberry", "Honey", "MeadTasty");
+            // "Blueberries" is plural - vanilla's prefab really is Blueberries, not Blueberry. The
+            // old seed list said "Blueberry", a prefab that does not exist in the game, so the seed
+            // silently matched nothing and blueberries were Unknown even on a fresh install.
+            AddAll("Produce", "Turnip", "Carrot", "Onion", "Mushroom", "MushroomYellow", "MushroomBlue",
+                              "Raspberry", "Blueberries", "Cloudberry");
+            AddAll("Sweet", "Honey", "QueensJam", "MeadTasty");
             AddAll("Fish", "FishRaw", "FishCooked");
             AddAll("Eitr", "MushroomMagecap", "SeekerAspic", "MushroomOmelette", "MagicallyStuffedShroom", "YggdrasilPorridge", "MisthareSupreme");
 

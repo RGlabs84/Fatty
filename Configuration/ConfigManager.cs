@@ -156,7 +156,7 @@ namespace Fatty.Configuration
                 "MULTIPLIER on how long food lasts. 1.0 = vanilla duration, 2.0 = food lasts twice as long (default). IGNORED while blacks7ar's FoodDurationMultiplier is installed - that mod's value is used instead, so the two can never multiply together.", 0.1f, 10f);
 
             enableMilestones = BindSynced(config, "8 - Milestones", "Enable Milestones", true,
-                "Eating a lot of a food category over the life of your character permanently raises a stat matched to that category's flavour: Meat->carry weight, Sweet->stamina, Eitr->eitr, Fish->swim speed, Vegetable->all-round regen. Total food eaten across EVERY category (a separate 'Fatness' tally) raises base max health. Small, infrequent awards that reward a broad diet.");
+                "Eating a lot of a food category over the life of your character permanently raises a stat matched to that category's flavour: Meat->carry weight, Sweet->stamina, Eitr->eitr, Fish->swim speed, Produce (vegetables and fruit)->all-round regen. Total food eaten across EVERY category (a separate 'Fatness' tally) raises base max health. Small, infrequent awards that reward a broad diet. Turning this OFF removes the bonuses but does NOT stop the tally - what you eat still counts, so switching it back on picks up where you left off.");
             milestoneTier1Count = BindSynced(config, "8 - Milestones", "Tier 1 Count", 50,
                 "Items of a SINGLE category that must be eaten to earn that category's 1st milestone. Default 50.", 1, 100000);
             milestoneTier2Count = BindSynced(config, "8 - Milestones", "Tier 2 Count", 200,
@@ -214,12 +214,15 @@ namespace Fatty.Configuration
             milestoneTier3SwimSpeed = BindSynced(config, "8 - Milestones", "Fish Tier 3 Swim Speed", 0.06f,
                 "Fish's 3rd milestone swim speed bonus (back to the flat reward, adds to tier 1's). Default +6%.", 0f, 1f);
 
-            milestoneTier1Regen = BindSynced(config, "8 - Milestones", "Vegetable Tier 1 Regen Multiplier", 1.02f,
-                "Vegetable's 1st milestone: permanent, always-on MULTIPLIER on health, stamina AND eitr regen together. 1.0 = vanilla, 1.02 = +2% (default). Each tier is its own always-on effect and multipliers compound, so earning tiers 1-3 at the defaults gives roughly +12% overall.", 1f, 2f);
-            milestoneTier2Regen = BindSynced(config, "8 - Milestones", "Vegetable Tier 2 Regen Multiplier", 1.04f,
-                "Vegetable's 2nd milestone regen multiplier. Default 1.04 (+4%).", 1f, 2f);
-            milestoneTier3Regen = BindSynced(config, "8 - Milestones", "Vegetable Tier 3 Regen Multiplier", 1.06f,
-                "Vegetable's 3rd milestone regen multiplier. Default 1.06 (+6%).", 1f, 2f);
+            // Renamed from "Vegetable Tier N ..." in 1.1.9 when the category widened to cover fruit.
+            // BepInEx keys by name, so a renamed entry starts at its default and the old line is
+            // left orphaned in the .cfg - anyone who had tuned these three has to re-enter them once.
+            milestoneTier1Regen = BindSynced(config, "8 - Milestones", "Produce Tier 1 Regen Multiplier", 1.02f,
+                "Produce (vegetables and fruit) 1st milestone: permanent, always-on MULTIPLIER on health, stamina AND eitr regen together. 1.0 = vanilla, 1.02 = +2% (default). Each tier is its own always-on effect, and SE_Stats adds regen bonuses above 1 rather than multiplying them, so earning tiers 1-3 at the defaults gives +12% exactly.", 1f, 2f);
+            milestoneTier2Regen = BindSynced(config, "8 - Milestones", "Produce Tier 2 Regen Multiplier", 1.04f,
+                "Produce's 2nd milestone regen multiplier. Default 1.04 (+4%).", 1f, 2f);
+            milestoneTier3Regen = BindSynced(config, "8 - Milestones", "Produce Tier 3 Regen Multiplier", 1.06f,
+                "Produce's 3rd milestone regen multiplier. Default 1.06 (+6%).", 1f, 2f);
 
             enableDrinkBuffs = BindSynced(config, "9 - Drink Buffs", "Enable Drink Buffs", true,
                 "Whatever holds your drink slot grants a buff chosen by its food category, lasting exactly as long as the drink does.");
@@ -272,6 +275,95 @@ namespace Fatty.Configuration
                 new ConfigDescription(
                     "FLAT points added to every Feast Ledger text size. 0 = the theme's own base sizes, 2 = +2pt (default, easier to read), negative = smaller. Takes effect on the next panel open (styles are built once).",
                     new AcceptableValueRange<int>(-6, 12)));
+
+            // Carry across anything the 1.1.9 rename would otherwise have silently reset to default.
+            MigrateRenamedKeys(config);
+        }
+
+        // ------------------------------------------------------------------
+        // Renamed-key migration.
+        //
+        // BepInEx keys a setting by its (section, key) name. Rename the key and Bind() finds nothing,
+        // so the entry starts at its DEFAULT and the player's tuned value is left behind in the .cfg
+        // as an orphan - silently, with no error and nothing on screen. That is a real cost to pay
+        // for a cosmetic rename, so the value is fetched back out and re-applied here.
+        //
+        // ConfigFile keeps every line it read but nothing bound to in its OrphanedEntries dictionary
+        // (ConfigDefinition -> the raw, unparsed string). It is reached by reflection rather than
+        // referenced directly: its accessibility is not part of BepInEx's public contract and has no
+        // guarantee of staying put across versions, and a rename that fails to migrate has to stay a
+        // one-line log message rather than taking the whole config - and with it the mod - down.
+        //
+        // Removing the orphan afterwards is what stops the dead line being written back out on the
+        // next save, so the .cfg ends up with exactly one entry per setting.
+        // ------------------------------------------------------------------
+        private static void MigrateRenamedKeys(ConfigFile config)
+        {
+            // 1.1.9: the Vegetable category widened to cover fruit and became Produce.
+            bool removedAny = false;
+            removedAny |= TryMigrateKey(config, "8 - Milestones", "Vegetable Tier 1 Regen Multiplier", milestoneTier1Regen);
+            removedAny |= TryMigrateKey(config, "8 - Milestones", "Vegetable Tier 2 Regen Multiplier", milestoneTier2Regen);
+            removedAny |= TryMigrateKey(config, "8 - Milestones", "Vegetable Tier 3 Regen Multiplier", milestoneTier3Regen);
+
+            // Dropping the orphan from the in-memory dictionary only reaches the .cfg on the next
+            // write, and nothing here is guaranteed to cause one: assigning ConfigEntry.Value does
+            // save, but that path is skipped whenever the old value already equals the new default -
+            // which is the common case, since most people never touch these. Without this the dead
+            // lines survive every launch and the file ends up listing both names forever.
+            if (removedAny) config.Save();
+        }
+
+        private static bool TryMigrateKey(ConfigFile config, string section, string oldKey, ConfigEntry<float> target)
+        {
+            if (config == null || target == null) return false;
+
+            try
+            {
+                var property = typeof(ConfigFile).GetProperty("OrphanedEntries",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+                if (property == null) return false;
+
+                var orphans = property.GetValue(config, null) as System.Collections.IDictionary;
+                if (orphans == null || orphans.Count == 0) return false;
+
+                var oldDefinition = new ConfigDefinition(section, oldKey);
+                if (!orphans.Contains(oldDefinition)) return false;
+
+                string raw = orphans[oldDefinition] as string;
+                orphans.Remove(oldDefinition); // drop the dead line either way - it is never coming back
+
+                // A value we can't parse is not worth guessing at: the entry keeps its default and
+                // the player is told, rather than being handed a silently wrong regen multiplier.
+                if (!float.TryParse(raw, System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out float value))
+                {
+                    FattyPlugin.Instance.Log.LogWarning(
+                        $"Fatty: could not read the old '{oldKey}' setting (value was '{raw}'); '{target.Definition.Key}' keeps its default.");
+                    return true;
+                }
+
+                // Range-clamped rather than assigned raw. The old entry's AcceptableValueRange is
+                // gone with it, so this is the one path into these values that isn't already
+                // range-checked at bind time.
+                var range = target.Description?.AcceptableValues as AcceptableValueRange<float>;
+                if (range != null) value = Mathf.Clamp(value, range.MinValue, range.MaxValue);
+
+                // Already equal (the usual case - most people never touch these), so there is nothing
+                // to carry across. Still reports true: the orphan WAS removed and that removal has
+                // to be flushed to disk by the caller.
+                if (Mathf.Approximately(value, target.Value)) return true;
+
+                target.Value = value;
+                FattyPlugin.Instance.Log.LogInfo(
+                    $"Fatty: carried your '{oldKey}' setting ({value}) across to '{target.Definition.Key}' after the 1.1.9 rename.");
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                FattyPlugin.Instance.Log.LogWarning(
+                    $"Fatty: could not migrate the renamed setting '{oldKey}' ({ex.Message}). '{target.Definition.Key}' keeps its default.");
+                return false;
+            }
         }
 
         // Binds a config entry and registers it with ServerSync so servers have authority over the value.

@@ -32,19 +32,19 @@ namespace Fatty.Synergies
 
                 Dictionary<string, int> catCounts = CountCategories(___m_foods);
 
-                bool balanced = synergiesEnabled && catCounts["Meat"] >= 1 && catCounts["Vegetable"] >= 1;
+                bool balanced = synergiesEnabled && catCounts["Meat"] >= 1 && catCounts["Produce"] >= 1;
                 bool sugarRush = synergiesEnabled && catCounts["Sweet"] >= 3 && catCounts["Drink"] >= 1;
-                bool fisherman = synergiesEnabled && catCounts["Fish"] >= 2 && catCounts["Vegetable"] >= 1;
+                bool fisherman = synergiesEnabled && catCounts["Fish"] >= 2 && catCounts["Produce"] >= 1;
                 bool lumberjack = synergiesEnabled && catCounts["Meat"] >= 3 && catCounts["Drink"] >= 1;
 
                 // Each synergy ends the moment ANY of its requirements stops being met, so its
                 // remaining time is the soonest of them - see NthLargestRemaining.
                 ApplyTimedEffect(seman, SynergyEffects.BalancedDietHash, balanced,
-                    Mathf.Min(CategoryRemaining(___m_foods, "Meat", 1), CategoryRemaining(___m_foods, "Vegetable", 1)));
+                    Mathf.Min(CategoryRemaining(___m_foods, "Meat", 1), CategoryRemaining(___m_foods, "Produce", 1)));
                 ApplyTimedEffect(seman, SynergyEffects.SugarRushHash, sugarRush,
                     Mathf.Min(CategoryRemaining(___m_foods, "Sweet", 3), DrinkRemaining(___m_foods, 1)));
                 ApplyTimedEffect(seman, SynergyEffects.FishermanHash, fisherman,
-                    Mathf.Min(CategoryRemaining(___m_foods, "Fish", 2), CategoryRemaining(___m_foods, "Vegetable", 1)));
+                    Mathf.Min(CategoryRemaining(___m_foods, "Fish", 2), CategoryRemaining(___m_foods, "Produce", 1)));
                 ApplyTimedEffect(seman, SynergyEffects.LumberjackHash, lumberjack,
                     Mathf.Min(CategoryRemaining(___m_foods, "Meat", 3), DrinkRemaining(___m_foods, 1)));
 

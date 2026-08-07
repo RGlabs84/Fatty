@@ -17,11 +17,15 @@ namespace Fatty.Progression
     //   Eitr      -> Eitr         (t1/t3, GetTotalFoodValue delta) <-> Eitr regen%     (t2)
     //   Fish      -> Swim Speed   (t1/t3, MilestonePerks SE_Stats) <-> Swim stamina use reduction (t2)
     //   Fatness   -> Max Health   (t1/t3, player.m_baseHP)         <-> Health regen%   (t2)
-    //   Vegetable -> All-round regen on ALL 3 tiers (MilestonePerks SE_Stats) - the one exception,
+    //   Produce   -> All-round regen on ALL 3 tiers (MilestonePerks SE_Stats) - the one exception,
     //                since it never owned a single flat pool to alternate a "flat" reward against.
+    //                Covers vegetables AND fruit; see CategoryManager.BaseCategories.
     //
     // Fatness is NOT per-category: it's total food eaten across EVERY category, including food
     // Fatty couldn't identify, since it rewards eating a lot in general rather than any one diet.
+    // That makes the per-category counts the substrate for BOTH axes, which is why they are written
+    // regardless of the enableMilestones switch (see RecordEaten) and re-derivable from the per-
+    // prefab feast log whenever classification changes (see MilestoneStore.RebuildFromLifetimeLog).
     //
     // m_baseHP/m_baseStamina/m_maxCarryWeight are all "vanilla only ever reads this" fields (see
     // GetTotalFoodValue/GetBaseFoodHP and GetMaxCarryWeight in the decompile), which gives the same
@@ -38,7 +42,7 @@ namespace Fatty.Progression
         private const string CategorySweet = "Sweet";
         private const string CategoryEitr = "Eitr";
         private const string CategoryFish = "Fish";
-        private const string CategoryVegetable = "Vegetable";
+        private const string CategoryProduce = "Produce";
 
         // Vanilla's starting values, and the floor everything builds from. Captured per-player on
         // spawn rather than hardcoded, so another mod raising a base value is respected.
@@ -50,16 +54,49 @@ namespace Fatty.Progression
         public static void OnSpawned(Player player)
         {
             if (player == null) return;
-            CaptureBaseIfNeeded(player);
+
+            // Captured UNCONDITIONALLY here, not once per session. Every new Player instance - a
+            // respawn, a relog, or switching to a different character without restarting the game -
+            // arrives with m_baseHP/m_baseStamina/m_maxCarryWeight fresh from the prefab and before
+            // Apply() has written anything to them, so this is the one place the values are reliably
+            // pristine. The old once-per-session guard meant the FIRST character loaded defined the
+            // baseline for every character loaded after it.
+            CaptureBase(player);
+
+            TryRebuildCounts(player);
+            Apply(player);
+        }
+
+        // Re-files a character's lifetime counts under the current categories, once, after a
+        // classification change. Deliberately gated on the ObjectDB food scan having finished:
+        // GetCategoryForPrefab answers from whatever is loaded at the time, and the scan is a
+        // coroutine spread across frames that can itself be deferred to this very spawn - rebuilding
+        // against a half-populated set would file live foods as Unknown and then stamp that as done.
+        //
+        // Called from BOTH ends for that reason: here (scan already finished, e.g. a later respawn)
+        // and from FoodScanner at the end of its run (scan finished after the player spawned).
+        // NeedsRebuild's schema stamp makes the second call a no-op, so the ordering doesn't matter.
+        public static void TryRebuildCounts(Player player)
+        {
+            if (player == null) return;
+            if (!Scanners.FoodScanner.ScanComplete) return;
+            if (!MilestoneStore.NeedsRebuild(player)) return;
+
+            MilestoneStore.RebuildFromLifetimeLog(player);
             Apply(player);
         }
 
         // Called once per successful eat. Records the bite, then recomputes and writes/syncs every
         // axis, then announces whichever axis (if any) just crossed a new tier.
+        // The tally is kept UNCONDITIONALLY - the enableMilestones switch governs the rewards, not
+        // the bookkeeping. It used to return here, which meant anything eaten with milestones off
+        // was gone for good: FoodLifetimeLog.RecordEaten sits on the very next line in EatFood and
+        // is not gated, so the two records silently diverged, and Fatness (which sums these counts)
+        // permanently under-counted. Toggling a setting off and back on should cost you nothing.
         public static void RecordEaten(Player player, string category)
         {
-            if (player == null || !ConfigManager.enableMilestones.Value) return;
-            if (string.IsNullOrEmpty(category)) return;
+            if (player == null) return;
+            if (string.IsNullOrEmpty(category)) category = CategoryManager.UnknownCategory;
 
             var counts = MilestoneStore.Load(player);
             int before = MilestoneStore.Get(counts, category);
@@ -69,6 +106,10 @@ namespace Fatty.Progression
             MilestoneStore.Save(player, counts);
 
             Apply(player);
+
+            // Rewards and their announcements are what the switch actually turns off. Apply() above
+            // already zeroes every bonus while disabled, so this only suppresses the toasts.
+            if (!ConfigManager.enableMilestones.Value) return;
 
             if (MilestoneStore.EarnsMilestones(category))
             {
@@ -104,7 +145,7 @@ namespace Fatty.Progression
             int sweetTiers = enabled ? TiersEarned(MilestoneStore.Get(counts, CategorySweet)) : 0;
             int eitrTiers = enabled ? TiersEarned(MilestoneStore.Get(counts, CategoryEitr)) : 0;
             int fishTiers = enabled ? TiersEarned(MilestoneStore.Get(counts, CategoryFish)) : 0;
-            int vegTiers = enabled ? TiersEarned(MilestoneStore.Get(counts, CategoryVegetable)) : 0;
+            int vegTiers = enabled ? TiersEarned(MilestoneStore.Get(counts, CategoryProduce)) : 0;
             int fatnessTiers = enabled ? FatnessTiersEarned(SumAll(counts)) : 0;
 
             // Tier 2 is the "alternate" reward slot for 5 of the 6 axes - gated purely on
@@ -126,9 +167,18 @@ namespace Fatty.Progression
             return EitrBonus(MilestoneStore.Load(player));
         }
 
+        // Fallback only, for the Apply-without-a-prior-spawn path. It MUST stay conditional: Apply
+        // writes the bonus straight into these same fields, so an unconditional capture from here
+        // would read a value Fatty had already inflated and fold the bonus into the baseline, once
+        // per eat, forever. OnSpawned owns the real capture - see CaptureBase.
         private static void CaptureBaseIfNeeded(Player player)
         {
             if (_capturedBase) return;
+            CaptureBase(player);
+        }
+
+        private static void CaptureBase(Player player)
+        {
             _pristineBaseHp = player.m_baseHP;
             _pristineBaseStamina = player.m_baseStamina;
             _pristineMaxCarryWeight = player.m_maxCarryWeight;
@@ -155,7 +205,7 @@ namespace Fatty.Progression
                 FattyPlugin.Instance.Log.LogInfo($"[Fatty] Milestone: Fatness tier {tier} -> {text}.");
         }
 
-        // Tier 2 is every category's "alternate" reward slot except Vegetable (which grants
+        // Tier 2 is every category's "alternate" reward slot except Produce (which grants
         // all-round regen on every tier - no flat counterpart to alternate against). Internal (not
         // private) so FeastLedgerGui can build a per-tier breakdown for the Getting Fat panel.
         internal static string DescribeTierAward(string category, int tier)
@@ -178,7 +228,7 @@ namespace Fatty.Progression
                     return tier == 2
                         ? $"-{ConfigManager.milestoneTier2FishSwimStamina.Value * 100f:0.#}% swim stamina cost"
                         : $"+{SwimSpeedForTier(tier) * 100f:0.#}% swim speed";
-                case CategoryVegetable:
+                case CategoryProduce:
                     return $"+{(RegenForTier(tier) - 1f) * 100f:0.#}% regen";
                 case "Fatness": // not a real diet category - the total-food-eaten axis, see SumAll
                     return tier == 2
@@ -369,9 +419,9 @@ namespace Fatty.Progression
                 parts.Add($"{CategoryFish}={fishEaten}({fishTiers} tier(s)) -> swim speed{alt}");
             }
 
-            int vegEaten = MilestoneStore.Get(counts, CategoryVegetable);
+            int vegEaten = MilestoneStore.Get(counts, CategoryProduce);
             if (vegEaten > 0)
-                parts.Add($"{CategoryVegetable}={vegEaten}({TiersEarned(vegEaten)} tier(s)) -> regen");
+                parts.Add($"{CategoryProduce}={vegEaten}({TiersEarned(vegEaten)} tier(s)) -> regen");
 
             int total = SumAll(counts);
             if (total > 0)

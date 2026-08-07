@@ -325,12 +325,13 @@ namespace Fatty.Patches
             DrawAlternatingMilestoneLine("Eitr", counts, "Eitr");
             DrawAlternatingMilestoneLine("Fish", counts, "Fish");
 
-            // Vegetable is the one category that grants the SAME reward type (regen%) on every tier,
-            // so a single cumulative total reads better than joining three separate fragments.
-            int vegEaten = MilestoneStore.Get(counts, "Vegetable");
+            // Produce (vegetables + fruit) is the one category that grants the SAME reward type
+            // (regen%) on every tier, so a single cumulative total reads better than joining three
+            // separate fragments.
+            int vegEaten = MilestoneStore.Get(counts, "Produce");
             int vegTiers = FoodMilestones.TiersEarned(vegEaten);
             _sb.Clear();
-            _sb.Append("Vegetable: ").Append(vegEaten).Append(" eaten");
+            _sb.Append("Produce: ").Append(vegEaten).Append(" eaten");
             if (vegTiers > 0)
             {
                 float mult = 1f;
@@ -343,6 +344,20 @@ namespace Fatty.Patches
 
             int totalEaten = 0;
             foreach (var kv in counts) totalEaten += kv.Value;
+
+            // Unclassified food used to be invisible here while still counting toward Fatness, so
+            // the axis totals never added up to the Fatness line and there was nothing on screen to
+            // explain the gap - which is exactly how "berries aren't being tracked" looked from the
+            // player's side. Shown only when it is non-zero, since a clean setup has none.
+            int unknownEaten = MilestoneStore.Get(counts, CategoryManager.UnknownCategory);
+            if (unknownEaten > 0)
+            {
+                _sb.Clear();
+                _sb.Append("Unclassified: ").Append(unknownEaten)
+                   .Append(" eaten  -  counts toward Fatness only, no category milestone. Set 'Rebuild Food Data' to re-derive, or edit Fatty_FoodData.json.");
+                GUILayout.Label(_sb.ToString(), _wrappingValueStyle);
+            }
+
             DrawAlternatingMilestoneLine("Fatness (all foods)", null, "Fatness", totalEatenOverride: totalEaten,
                 tiersOverride: FoodMilestones.FatnessTiersEarned(totalEaten), bold: true);
         }

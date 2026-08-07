@@ -1,5 +1,77 @@
 # Changelog
 
+## [1.1.9] - Fruit, and the Food Fatty Was Never Counting
+
+### Fixed
+
+- **Berries were never being counted as anything.** Raspberries, Blueberries, Cloudberries and
+  Vineberries all fell through Fatty's classifier into "Unknown", which earns no category milestone
+  at all — so a character living on berries got credit toward Fatness and nothing else. Fatty matched
+  food names a whole word at a time, and "Raspberry" is the single word *raspberry*, which is not
+  *berry*; no raw berry in the game could ever match.
+- **Blueberries were seeded under a prefab that doesn't exist.** The built-in starter list said
+  `Blueberry`; the actual item in Valheim is `Blueberries`. That entry matched nothing, so even a
+  brand-new install had blueberries uncategorised.
+- **The same fault was hiding far more than berries.** Because matching was strictly whole-word,
+  `GlazedCarrots` didn't match "carrot", `SauteMushrooms` didn't match "mushroom", `VikingCupcake`
+  didn't match "cake", `MisthareSupreme` didn't match "hare" and `FierySvinstew` didn't match
+  "stew". On a fully modded test setup that left **85 real foods earning nothing at all**. Matching
+  now understands plurals and compound word-endings, so modded foods are covered without Fatty
+  having to know their names — recovering Feasts, broths, stews, egg dishes, glazed vegetables and a
+  long tail of Valheim Cuisine plates. Measured on a real 624-item scan: unclassified real food
+  dropped from **85 to 58**, with **no** previously-correct category changed.
+- **A dish is now categorised by its ingredients, not its cooking method.** "Turnip Stew" and
+  "Fish Stew" are Produce and Fish rather than Meat; only a stew or broth whose ingredients Fatty
+  can't recognise falls back to Meat.
+- **Food eaten while milestones were switched off was lost forever.** The per-category tally stopped
+  being written entirely when "Enable Milestones" was off, while the Lifetime Feast Log kept
+  recording — so the two drifted apart and Fatness permanently under-counted. The tally now always
+  runs; the setting turns off the *rewards*, not the bookkeeping. Switch it back on and you pick up
+  exactly where you left off.
+- **Re-categorising a food used to strand everything you'd already eaten of it.** Counts were filed
+  under whatever category a food had at the moment you ate it and never moved again, so a
+  "Rebuild Food Data", a food-mod update, or an improvement to Fatty's own classifier left your
+  progress under a name nothing read any more. Fatty now re-derives your lifetime category counts
+  from the per-food Feast Log when the classification changes. **This runs once on your first launch
+  of 1.1.9** and repairs every berry you have ever eaten retroactively.
+- **Unclassified food is now visible.** The "Getting Fat" panel showed five category lines and a
+  Fatness total that didn't add up to them, with nothing to explain the difference. It now shows an
+  **Unclassified** line whenever you have any, and tells you how to fix it.
+- **Renamed config settings no longer silently reset to their defaults.** BepInEx looks settings up
+  by name, so renaming one leaves your tuned value orphaned in the config file and the setting back
+  at default with no warning. Fatty now carries the old value across and tidies the dead line away.
+- **Loading a second character without restarting the game used the first one's base stats.** Fatty
+  records your pristine base health, stamina and carry weight so milestone bonuses can be added on
+  top; it was capturing them once per session rather than once per character, so switching
+  characters carried the wrong baseline across. Now captured on every spawn.
+- **A modded food whose internal name contained a comma or an equals sign could corrupt your whole
+  Lifetime Feast Log.** Both are used as separators in the saved record, so a single such food broke
+  every entry after it — not just its own — and silently truncated your history on the next load.
+  Names are now escaped. Existing logs are unaffected and need no conversion.
+- **Reduced per-second work on the food stat path.** Your lifetime counts were being re-parsed from
+  their saved text once a second to answer the max-eitr milestone bonus; the parse is now reused
+  until the counts actually change.
+
+### Changed
+
+- **"Vegetable" is now "Produce", and covers fruit as well as vegetables.** Berries and other raw
+  fruit join carrots, turnips and mushrooms in one category rather than being counted as
+  confectionery. Anything actually *made* from fruit — pies, jams, tarts, Queen's Jam — stays
+  **Sweet**, so preparation still decides the category rather than the ingredient.
+  - The Balanced Diet and Fisherman's Friend synergies now read "1 Produce" instead of "1 Veggie",
+    and berries satisfy them.
+  - The three `Vegetable Tier N Regen Multiplier` config entries are renamed to `Produce Tier N ...`.
+    **If you had customised those three values they are carried across for you** and the old lines
+    are cleaned out of your config file. Nothing else in the config is affected.
+  - Your existing Vegetable progress is carried over by the one-time rebuild described above, not
+    lost.
+- **Your food data file will be rebuilt once on first launch.** `Fatty_FoodData.json` moves to data
+  version 7; the previous file is backed up to `Fatty_FoodData.json.bak` as usual. Any categories you
+  hand-edited in it will be overwritten, so re-apply them afterwards if you had any.
+
+> **Coming from 1.1.7?** 1.1.8 was a test build and was never published, so its fixes ship here too —
+> see the 1.1.8 section below for the Feast Ledger drag, off-screen and text-wrapping fixes.
+
 ## [1.1.8] - Hotfix: Feast Ledger Drag/Position/Wrapping
 
 ### Fixed

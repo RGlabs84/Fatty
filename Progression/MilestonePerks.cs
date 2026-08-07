@@ -7,12 +7,12 @@ namespace Fatty.Progression
     // ---------------------------------------------------------------------
     // Permanent milestone perks for the reward types with no vanilla "base pool" field to write into
     // (unlike Meat/Sweet/Eitr/Fatness's flat tiers - see FoodMilestones): Fish's swim-speed tiers,
-    // Vegetable's all-round-regen tiers, and every category's tier-2 "alternate" reward (Eitr/Sweet/
+    // Produce's all-round-regen tiers, and every category's tier-2 "alternate" reward (Eitr/Sweet/
     // Fatness's regen%, Meat's skill bonus, Fish's swim-stamina reduction). Modeled as SE_Stats
     // effects, same tool DrinkBuffs/SynergyEffects already use for non-pool bonuses, but ALWAYS ON
     // once earned rather than gated on current stomach contents.
     //
-    // Fish and Vegetable get three separate effects each, one per tier (not one effect whose fields
+    // Fish and Produce get three separate effects each, one per tier (not one effect whose fields
     // get rewritten), because Valheim already combines multiple simultaneously-active SE_Stats
     // correctly, which is what makes earning tiers 1-3 cumulative for free.
     //
@@ -97,7 +97,11 @@ namespace Fatty.Progression
             _fish3 = CreateBase("SE_Fatty_MilestoneFish3", "Sea Legs III", "The sea knows your name.\nSwim speed permanently improved further.");
             _fish3.m_icon = SynergyIcons.Resolve("MilestoneFish", SynergyIcons.Fisherman);
 
-            _veg1 = CreateBase("SE_Fatty_MilestoneVeg1", "Well Nourished I", "A lifetime of greens.\nHealth, stamina and eitr regeneration permanently improved.");
+            // Internal names stay "...Veg..." deliberately even though the category is now Produce:
+            // se.name feeds NameHash(), which is the identity SEMan/ObjectDB key these effects by.
+            // Renaming them would orphan the copy already active on a character mid-session for no
+            // player-visible gain - the displayed name and tooltip are what anyone actually reads.
+            _veg1 = CreateBase("SE_Fatty_MilestoneVeg1", "Well Nourished I", "A lifetime of greens and orchard fruit.\nHealth, stamina and eitr regeneration permanently improved.");
             _veg1.m_icon = SynergyIcons.Resolve("MilestoneVeg", SynergyIcons.BalancedDiet);
             _veg2 = CreateBase("SE_Fatty_MilestoneVeg2", "Well Nourished II", "Your diet is the envy of the village.\nRegeneration permanently improved further.");
             _veg2.m_icon = SynergyIcons.Resolve("MilestoneVeg", SynergyIcons.BalancedDiet);

@@ -12,45 +12,24 @@ namespace Fatty.Scanners
     {
         private static bool _hasScanned = false;
 
-        // Splits PascalCase/camelCase prefab names into whole words (e.g. "PerchSteak" -> "perch",
-        // "steak"). Category keywords are matched as WHOLE words against this set, not raw substrings -
-        // a plain string.Contains("tea") previously matched inside "Steak" and Contains("mead") matched
-        // inside "Meadows", silently miscategorizing solid food as "Drink" (stealing the one drink slot
-        // and blocking real food/drink from being eaten).
-        private static readonly Regex WordSplitter = new Regex(@"[A-Z]?[a-z0-9]+|[A-Z0-9]+(?![a-z])", RegexOptions.Compiled);
+        // True only once a scan has run all the way through, so GetCategoryForPrefab can be trusted
+        // to answer for every food in the game. _hasScanned is claimed UP FRONT to stop a second
+        // coroutine starting, so it is not the same question and cannot be used for this.
+        public static bool ScanComplete { get; private set; }
 
-        // Includes a few whole-word compounds ("vineberry", "meatbug", "magmafish", "meadnog",
-        // "alenog") that fuse a keyword with no internal capital to split on (e.g. "Meatbug", not
-        // "MeatBug") - whole-word matching alone would silently miss those and fall back to the
-        // Vegetable default, the same way it correctly rejects unrelated words like "Meadows"/"Steak"
-        // that merely happen to contain a keyword as a substring.
-        private static readonly HashSet<string> DrinkWords = new HashSet<string> { "tea", "coffee", "mead", "ale", "drink", "meadnog", "alenog", "shake", "smoothie", "shroomshake", "beer", "brew", "booze", "perry", "blaand", "nog", "cider", "juice", "infusion", "wine", "mjod", "grog", "elixir", "tonic", "draught", "wort" };
-
-        // Meat/Fish carry named creatures as well as cuts. Since "Vegetable" is no longer the
-        // catch-all, anything these lists miss now lands in Unknown rather than being quietly
-        // mislabelled - so it is worth naming the common Valheim/Valheim Cuisine animals directly.
-        private static readonly HashSet<string> MeatWords = new HashSet<string> { "meat", "steak", "pork", "sausage", "sausages", "meatbug", "boar", "deer", "wolf", "lox", "neck", "serpent", "troll", "bear", "hare", "chicken", "seeker", "asksvin", "volture", "bonemaw", "drake", "kraken", "ham", "jerky", "salami", "bacon", "entrails", "heart", "morgen", "ulv", "hakarl", "tentacle" };
-        private static readonly HashSet<string> SweetWords = new HashSet<string> { "berry", "berries", "cake", "sweet", "honey", "vineberry", "cookies", "cookie", "jam", "pie", "krem", "candy", "fruit" };
-        private static readonly HashSet<string> FishWords = new HashSet<string> { "fish", "salmon", "magmafish", "perch", "pike", "trout", "herring", "lutefisk", "rakfisk", "stockfish", "gravlaks", "puffers", "grouper", "tetra", "hafgufa" };
-        private static readonly HashSet<string> VegetableWords = new HashSet<string> { "turnip", "carrot", "onion", "mushroom", "shroom", "magecap", "vegetable", "veggies", "greens", "root", "roots", "barley", "flax", "seed", "seeds", "salad", "cabbage", "leek", "herb", "herbal", "bread", "porridge", "dumplings", "omelette", "potato", "pickled", "sap" };
-
-        // Vanilla drinks whose diet can be read from NEITHER a status effect nor a name word.
-        // Tasty Mead is the whole list: it grants no status effect at all (which is also why
-        // GetBurnTime has to give it a configured default duration) and "mead"/"tasty" hit no diet
-        // word list. It was previously only Sweet because GenerateDefaultCategories seeds it that
-        // way on a fresh install - a "Rebuild Food Data" or any data-version migration throws those
-        // seeds away and re-derives, which silently turned it Unknown and killed Reveler's Draught.
+        // Vanilla drinks whose diet can be read from NEITHER a status effect nor a name word. Tasty
+        // Mead is the whole list: it grants no status effect at all (which is also why GetBurnTime
+        // has to give it a configured default duration) and "mead"/"tasty" hit no diet word list. It
+        // was previously only Sweet because GenerateDefaultCategories seeds it that way on a fresh
+        // install - a "Rebuild Food Data" or any data-version migration throws those seeds away and
+        // re-derives, which silently turned it Unknown and killed Reveler's Draught.
+        //
+        // Keyed by PREFAB rather than by word, which is why it stays here rather than moving to
+        // FoodWordClassifier alongside the word lists.
         private static readonly Dictionary<string, string> KnownDrinkDiets = new Dictionary<string, string>
         {
             { "MeadTasty", "Sweet" },
         };
-
-        private static void AddWords(string s, HashSet<string> into)
-        {
-            if (string.IsNullOrEmpty(s)) return;
-            foreach (Match m in WordSplitter.Matches(s))
-                into.Add(m.Value.ToLowerInvariant());
-        }
 
         // Spread the scan across frames so a large modded ObjectDB doesn't stall the load frame.
         private const int ItemsPerFrame = 100;
@@ -201,6 +180,19 @@ namespace Fatty.Scanners
             string outcome = categoryUpdated || migrated ? "data saved" : "no change";
             string reason = wasRebuild ? ", rebuilt on request" : migrated ? ", migrated to new categories" : string.Empty;
             FattyPlugin.Instance.Log.LogInfo($"Fatty food scan complete: {foodFound} food item(s) catalogued ({outcome}{reason}).");
+
+            // Only now is every prefab classified, which is the precondition for re-filing a
+            // character's lifetime counts. On the ZNetScene.Awake path there is no player yet and
+            // this no-ops - FoodMilestones.OnSpawned makes the same call when one arrives.
+            ScanComplete = true;
+            try
+            {
+                Progression.FoodMilestones.TryRebuildCounts(Player.m_localPlayer);
+            }
+            catch (System.Exception ex)
+            {
+                FattyPlugin.Instance.Log.LogError($"Fatty Mod: Feature Lost - Milestone Count Rebuild. Reason: {ex}");
+            }
         }
 
         // Processes a single ObjectDB entry. Returns true if it added a new category or new
@@ -234,12 +226,10 @@ namespace Fatty.Scanners
 
             // Classify when we have nothing for this prefab, or when a data migration asked for a
             // full rebuild (pre-v2 files carry categories from the old rules - no Eitr category and
-            // everything unidentified filed as Vegetable - which can't be repaired in place).
+            // everything unidentified filed as the produce catch-all - can't be repaired in place).
             if (existingCategory == CategoryManager.UnknownCategory || CategoryManager.NeedsReclassify)
             {
-                var words = new HashSet<string>();
-                AddWords(shared.m_name, words);
-                AddWords(prefabName, words);
+                var words = FoodWordClassifier.SplitWords(shared.m_name, prefabName);
 
                 // Hardcoded integrations are hand-authored from the source mod's own recipe list, so
                 // they keep their diet even through a migration's full rebuild. The drink slot is a
@@ -323,10 +313,10 @@ namespace Fatty.Scanners
                 if (byEffect != null) return byEffect;
             }
 
-            if (words.Overlaps(MeatWords)) return "Meat";
-            if (words.Overlaps(FishWords)) return "Fish";
-            if (words.Overlaps(SweetWords)) return "Sweet";
-            if (words.Overlaps(VegetableWords)) return "Vegetable";
+            // Name-driven matching lives in FoodWordClassifier - see there for the word lists and
+            // for why plurals and compounds need more than an exact set lookup.
+            string byName = FoodWordClassifier.ClassifyDiet(words);
+            if (byName != null) return byName;
 
             // A drink that reached here has no readable effect and no diet word - the resistance and
             // repellent meads, whose status effects are damage-mod lists rather than stat changes.
@@ -334,7 +324,7 @@ namespace Fatty.Scanners
             // never a dead choice.
             if (isDrink) return "Meat";
 
-            // Solid food no longer defaults to Vegetable. An honest Unknown keeps the synergy
+            // Solid food no longer defaults to a real diet. An honest Unknown keeps the synergy
             // requirements meaningful and, because Unknown can never be a drink, it can't steal the
             // drink slot.
             return CategoryManager.UnknownCategory;
@@ -399,7 +389,9 @@ namespace Fatty.Scanners
         // and anything it misses is one IsDrink edit away in Fatty_FoodData.json.
         private static bool IsDrink(ItemDrop.ItemData.SharedData shared, HashSet<string> words)
         {
-            return words.Overlaps(DrinkWords);
+            // Suffix matching is deliberately OFF for the drink list - see FoodWordClassifier. A
+            // false positive here costs the single drink slot, not just a category.
+            return FoodWordClassifier.IsDrink(words);
         }
     }
 }

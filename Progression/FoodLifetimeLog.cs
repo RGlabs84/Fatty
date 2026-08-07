@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Text;
 
 namespace Fatty.Progression
 {
@@ -15,6 +14,14 @@ namespace Fatty.Progression
     // Serialized as one compact key, same format as MilestoneStore:
     //   Fatty.FoodLifetimeCounts = "CookedMeat=142,Sausages=30,Cloudberry=88"
     // Zero counts are omitted; unparseable entries are skipped rather than throwing.
+    //
+    // Keys here are raw prefab names from other mods' ObjectDB entries, so they go through
+    // CountsCodec's escaping - a single prefab containing ',' or '=' would otherwise corrupt every
+    // record after it, not just its own. See CountsCodec for the full reasoning.
+    //
+    // This is also the authoritative record the per-CATEGORY counts are rebuilt from, since it is
+    // written on every eat with no config gate and never needed to know about categories at all -
+    // see MilestoneStore.RebuildFromLifetimeLog.
     // ---------------------------------------------------------------------
     public static class FoodLifetimeLog
     {
@@ -22,41 +29,22 @@ namespace Fatty.Progression
 
         public static Dictionary<string, int> Load(Player player)
         {
-            var counts = new Dictionary<string, int>();
-            if (player == null || player.m_customData == null) return counts;
+            if (player == null || player.m_customData == null) return new Dictionary<string, int>();
 
             if (!player.m_customData.TryGetValue(CountsKey, out string raw) || string.IsNullOrEmpty(raw))
-                return counts;
+                return new Dictionary<string, int>();
 
-            foreach (string pair in raw.Split(','))
-            {
-                int eq = pair.IndexOf('=');
-                if (eq <= 0 || eq == pair.Length - 1) continue;
-
-                string key = pair.Substring(0, eq);
-                if (!int.TryParse(pair.Substring(eq + 1), out int value)) continue;
-                if (value <= 0) continue;
-
-                counts[key] = value;
-            }
-
-            return counts;
+            return CountsCodec.Parse(raw);
         }
 
         public static void Save(Player player, Dictionary<string, int> counts)
         {
             if (player == null || player.m_customData == null || counts == null) return;
 
-            var sb = new StringBuilder();
-            foreach (var kvp in counts)
-            {
-                if (kvp.Value <= 0) continue;
-                if (sb.Length > 0) sb.Append(',');
-                sb.Append(kvp.Key).Append('=').Append(kvp.Value);
-            }
+            string serialized = CountsCodec.Serialize(counts);
 
-            if (sb.Length == 0) player.m_customData.Remove(CountsKey);
-            else player.m_customData[CountsKey] = sb.ToString();
+            if (serialized == null) player.m_customData.Remove(CountsKey);
+            else player.m_customData[CountsKey] = serialized;
         }
 
         public static void RecordEaten(Player player, string prefabName)

@@ -5,7 +5,7 @@
 ![Valheim Mod](https://img.shields.io/badge/Valheim-Food_Overhaul-orange.svg)
 [![Multiplayer Compatible](https://img.shields.io/badge/Multiplayer-Server--Synced-blue.svg)]()
 [![Framework](https://img.shields.io/badge/Requires-BepInEx-red.svg)]()
-[![Version](https://img.shields.io/badge/Version-1.1.8-lightgrey.svg)]()
+[![Version](https://img.shields.io/badge/Version-1.1.9-lightgrey.svg)]()
 
 *Stop surviving. Start feasting.* 
 
@@ -64,9 +64,9 @@ Eat the right mix and a **Status Effect** appears with no input from you — kee
 
 | You're eating | You get |
 | :--- | :--- |
-| 1 Meat + 1 Veggie | 🟢 Balanced Diet — big Health & Stamina regen |
+| 1 Meat + 1 Produce | 🟢 Balanced Diet — big Health & Stamina regen |
 | 3 Sweets + 1 Drink | 🩷 Sugar Rush — big movement speed |
-| 2 Fish + 1 Veggie | 🔵 Fisherman's Friend — faster, cheaper swimming |
+| 2 Fish + 1 Produce | 🔵 Fisherman's Friend — faster, cheaper swimming |
 | 3 Meat + 1 Drink | 🟤 Lumberjack's Feast — more carry weight & woodcutting damage |
 
 Whatever's in your **drink slot** grants its own buff too, chosen by what that drink actually does (an eitr mead → Arcane Draught, a stamina mead → Reveler's, and so on) — see the [Mead & Drink Buffs](#-mead--drink-buffs) table below for the full list. You don't pick a draught; the drink you're holding picks it for you.
@@ -74,14 +74,14 @@ Whatever's in your **drink slot** grants its own buff too, chosen by what that d
 **Fill your drink slot with Tasty Mead** and you get **Drunk** — harder hitting, harder to stagger, but a much weaker guard. It's the one drink you can chug back-to-back, specifically so this is reachable.
 
 ### The buffs that never go away
-Separately from all of the above, Fatty is quietly counting **every food you've ever eaten, by category**, for the life of your character. Cross a threshold in a category and you get a small slice of a **permanent** stat matched to that category's flavour — Meat → carry weight, Sweet → stamina, Eitr → max eitr, Fish → swim speed, Vegetable → all-round regen — and none of it has anything to do with your current stomach; it's never lost, even if you starve. Meat/Sweet/Eitr/Fish don't repeat the same reward three times either: the *2nd* tier swaps in a different permanent perk (Sword & Axe skill, stamina regen, eitr regen, or reduced swim stamina cost) before the 3rd tier goes back to the flat bonus. On top of all that, your **total** food eaten across every category (a separate "Fatness" tally, which alternates the same way — max health, then health regen, then max health again) permanently raises your max health. It's deliberately per-category, so it rewards actually eating a varied diet over a long playthrough rather than spamming one cheap food. Check your progress any time in the **Getting Fat** section of the ▲ FEAST panel.
+Separately from all of the above, Fatty is quietly counting **every food you've ever eaten, by category**, for the life of your character. Cross a threshold in a category and you get a small slice of a **permanent** stat matched to that category's flavour — Meat → carry weight, Sweet → stamina, Eitr → max eitr, Fish → swim speed, Produce (vegetables *and* fruit) → all-round regen — and none of it has anything to do with your current stomach; it's never lost, even if you starve. Meat/Sweet/Eitr/Fish don't repeat the same reward three times either: the *2nd* tier swaps in a different permanent perk (Sword & Axe skill, stamina regen, eitr regen, or reduced swim stamina cost) before the 3rd tier goes back to the flat bonus. On top of all that, your **total** food eaten across every category (a separate "Fatness" tally, which alternates the same way — max health, then health regen, then max health again) permanently raises your max health. It's deliberately per-category, so it rewards actually eating a varied diet over a long playthrough rather than spamming one cheap food. Check your progress any time in the **Getting Fat** section of the ▲ FEAST panel.
 
 ### A worked example
 You eat 3 Cooked Meat, 1 Carrot Soup, and a Stamina Mead:
 - **Meat slot:** shows "×3" — 1st Meat at 100%, 2nd at 30%, 3rd at 20% of its stats, stacked together.
-- **Veggie slot:** Carrot Soup on its own, full value.
+- **Produce slot:** Carrot Soup on its own, full value.
 - **Drink slot:** the Stamina Mead — health/stamina from it feed your bars like any food, *and* because it's a Sweet-category drink it also grants the **Reveler's Draught** for as long as it holds the slot.
-- You now have **1 Meat + 1 Veggie** on the board → **Balanced Diet** kicks in automatically, with its own countdown ticking on the icon.
+- You now have **1 Meat + 1 Produce** on the board → **Balanced Diet** kicks in automatically, with its own countdown ticking on the icon.
 - Every one of those four foods also just counted toward its category's lifetime "Getting Fat" tally (and the overall Fatness tally) — permanently, whether or not you ever eat that exact meal again.
 
 That's the whole loop: eat → stack → qualify for buffs → get a little more permanent, forever, in the background.
@@ -132,7 +132,7 @@ Fatty counts every food you eat, **per category**, for the lifetime of your char
 | 🍬 **Sweet** | Base stamina | Stamina regen |
 | 🔮 **Eitr** | Max eitr | Eitr regen |
 | 🐟 **Fish** | Swim speed | Reduced swim stamina cost |
-| 🥕 **Vegetable** | Health, stamina & eitr regen, all 3 tiers | *(no alternate - it's the regen category already)* |
+| 🥕 **Produce** (vegetables & fruit) | Health, stamina & eitr regen, all 3 tiers | *(no alternate - it's the regen category already)* |
 | 🍔 **Fatness** (total eaten, every category) | Base max health | Health regen |
 
 - Because the five diet counts are per category, a **varied diet** is what pays off — you can't just spam the cheapest berry to max out everything.
@@ -145,9 +145,9 @@ Eating the right combination of food categories triggers a unique, powerful **St
 
 | Synergy | Recipe | Effect |
 | :--- | :--- | :--- |
-| **🟢 Balanced Diet** | 1 Meat + 1 Veggie | Greatly increased Health & Stamina regen |
+| **🟢 Balanced Diet** | 1 Meat + 1 Produce | Greatly increased Health & Stamina regen |
 | **🩷 Sugar Rush** | 3 Sweets + 1 Drink | Big movement-speed boost |
-| **🔵 Fisherman's Friend** | 2 Fish + 1 Veggie | Improved swim speed & reduced swim stamina use |
+| **🔵 Fisherman's Friend** | 2 Fish + 1 Produce | Improved swim speed & reduced swim stamina use |
 | **🟤 Lumberjack's Feast** | 3 Meat + 1 Drink | Bonus carry weight & woodcutting damage |
 
 Its status icon shows a **live countdown** to when your diet will actually stop qualifying — eat more of what's about to run out and the timer pushes back out. Banked stacks of the same food are counted **in sequence**, matching how they actually burn down, so the countdown reflects your real reserve rather than a single slot's timer.
@@ -202,7 +202,7 @@ If you *do* have **blacks7ar's FoodDurationMultiplier** installed, Fatty detects
 ### 🤝 Food-Mod Compatibility
 Fatty is built to play nicely with **any** food mod:
 - **Automatic, open support:** Fatty scans every food in the game — from the base game or *any* mod — and sorts each one into a category. New foods just work.
-- **Eitr food is identified by its stats, not its name.** "Mushroom Omelette" is mage food, not a vegetable, and Fatty files it accordingly.
+- **Eitr food is identified by its stats, not its name.** "Mushroom Omelette" is mage food, not produce, and Fatty files it accordingly.
 - **Valheim Cuisine:** specifically recognized. Fatty pre-sorts its meats, fish, sweets and drinks out of the box using Valheim Cuisine's own recipe ingredients as ground truth — not guessing from the name.
 - **Full manual control:** anything the auto-sorter gets wrong, you fix in one JSON file (below).
 
@@ -212,7 +212,7 @@ Every food has a **category** (its diet) and, separately, a flag for whether it 
 
 | Category | What it is |
 | :--- | :--- |
-| **Meat** / **Fish** / **Vegetable** / **Sweet** | The classic four |
+| **Meat** / **Fish** / **Produce** / **Sweet** | The classic four. **Produce** covers vegetables *and* fruit — raw berries are produce, while a berry *pie* is Sweet |
 | **Eitr** | Mage food — anything whose eitr outweighs its health or its stamina |
 | **Unknown** | Fatty couldn't identify it. Always treated as **food, never a drink**, so it can never steal your drink slot |
 
@@ -221,7 +221,7 @@ The drink flag is set from the item's **name** (mead, ale, tea, brew, smoothie, 
 ### 📁 The JSON Data File
 The **first** time you run Fatty, it writes every food's real stats, category and drink flag to `BepInEx/config/Fatty_FoodData.json`. After that it **only rewrites the file when it discovers new foods** (for example, after you add another food mod) — so a normal launch never touches it and **your manual edits are preserved**.
 
-**Want to change a food's category?** Edit that JSON file — set any food to `Meat`, `Vegetable`, `Sweet`, `Fish`, `Eitr` or `Unknown`, and set `IsDrink` to control whether it uses the drink slot. Fatty will respect it.
+**Want to change a food's category?** Edit that JSON file — set any food to `Meat`, `Produce`, `Sweet`, `Fish`, `Eitr` or `Unknown`, and set `IsDrink` to control whether it uses the drink slot. Fatty will respect it.
 
 ---
 
@@ -248,4 +248,15 @@ Fatty needs just two things at runtime — **Gale** installs them automatically:
 </div>
 
 ---
-join the Mists of Avalor Open BETA find it only on [Hexium ![Hexium Logo](data:image/png;base64,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)](https://valheim.hexium.gg/mods/Wubarrk/Mists_of_Avalor_BETA)
+join the Mists of Avalor Open BETA find it only on [Hexium](https://valheim.hexium.gg/mods/Wubarrk/Mists_of_Avalor_BETA)
+<br>
+<small>
+
+**License to Modify:**
+User may alter, translate, or create derivative works based on the original material, provided two conditions are met: 1) A request to alter the work is made and approved by the original author (waived in the case of simple translations), and 2) Full attribution is given to the original author along with a link to the original work (if still available).  All changes should be clearly marked or noted as modified from the original source.
+
+Modification or reuse of the work does not grant the user any right to imply official endorsement or sponsorship by the original creator.
+
+The permission granted herein is non-exclusive, and the original creator retains all rights, title, and interest in the original work.
+
+</small>
