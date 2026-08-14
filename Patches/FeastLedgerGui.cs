@@ -53,6 +53,12 @@ namespace Fatty.Patches
         private static Vector2 _resizeStartMouse;
         private static Vector2 _resizeStartSize;
 
+        // Closed-pill press tracking - see HandleClosedPillClick.
+        private static bool _pillPressed;
+        private static bool _pillHovering;
+        private static Vector2 _pillPressPos;
+        private const float ClickSlop = 4f;   // move further than this and it was a drag, not a click
+
         private static Vector2 _scroll;
         private static bool _milestonesOpen;
         private static bool _feastLogOpen;
@@ -91,21 +97,199 @@ namespace Fatty.Patches
             EnsureInit();
             EnsureStyles();
 
-            Rect drawRect = _open ? _rect : new Rect(_rect.x, _rect.y, ClosedWidth, ClosedHeight);
+            // Fatty lays every rect out in raw screen pixels, so it needs the identity transform - and
+            // in a loaded profile it does not get one. Measured in game from a real session (2560x1440):
+            // on MOUSE-EVENT passes something upstream leaves GUI.matrix carrying a 1.1 scale plus a
+            // ~143px y translation, while REPAINT passes arrive untransformed. Event.current.mousePosition
+            // is reported through that matrix, so on exactly the passes that decide a click - and only
+            // those - every control in this file was hit-testing against a position ~10% shrunk and 143px
+            // low. GUI.Button's hover, decided on repaint, kept working perfectly, which is precisely the
+            // "it highlights but will not click" report; F8 was unaffected because a keyboard poll never
+            // touches a coordinate at all. Restored afterwards, because the plugins drawing after this one
+            // are entitled to whatever state they were handed.
+            Matrix4x4 prevMatrix = GUI.matrix;
+            GUI.matrix = Matrix4x4.identity;
+
+            // Resetting the matrix is NOT enough on its own, and the reason is worth stating because it
+            // cost a round trip: Unity transforms Event.current.mousePosition when the event is DISPATCHED
+            // into OnGUI, not when it is read. Clearing GUI.matrix here therefore fixes drawing while
+            // leaving the pointer exactly as skewed as it arrived - which is why resetting the matrix made
+            // the pill (hit-tested against the hardware cursor) work while every control INSIDE the panel,
+            // which goes through GUI/GUILayout and reads Event.current.mousePosition, stayed off.
+            //
+            // Measured: the pointer arrives divided by 1.100 in a space 1.1x the reported Screen size
+            // (2816x1584 against a real 2560x1440), consistent to four decimal places over every sample.
+            // Overwriting it with the true screen position fixes every control at once - GUI.Button, the
+            // foldouts, the scroll view, the close button - instead of one hit-test at a time.
+            //
+            // Restored in the finally with the matrix. Event.current is shared with whatever draws after
+            // this plugin, and while the value written here is the truthful one, silently reshaping another
+            // mod's input is not this mod's call to make.
+            Event ev = Event.current;
+            Vector2 prevMouse = ev != null ? ev.mousePosition : Vector2.zero;
+            if (ev != null) ev.mousePosition = MouseGui();
+
+            try
+            {
+            // Latched BEFORE the window runs, and every test below uses the latch rather than _open.
+            //
+            // DrawClosedPill's button assigns _open = true from INSIDE the GUI.Window callback, so by
+            // the time control returns here _open no longer describes what was drawn - but `result`
+            // still does, and on that frame `result` is the 110x30 closed pill. Testing _open therefore
+            // adopted the PILL's size as the panel's size the instant it was clicked: _rect became
+            // 110x30, far under MinWidth/MinHeight, and nothing re-clamps it after EnsureInit, so the
+            // panel "opened" as a stub whose GiltFrameTheme.Body() works out to a negative height and
+            // threw out of GUILayout.BeginArea. A separate bug from the matrix above - it needed the
+            // click to land before it could bite - but it would have been the very next failure.
+            bool wasOpen = _open;
+
+            Rect drawRect = wasOpen ? _rect : new Rect(_rect.x, _rect.y, ClosedWidth, ClosedHeight);
+
+            // BEFORE GUI.Window, so this sees the raw event whatever the window does with it afterwards.
+            if (!wasOpen) HandleClosedPillClick(drawRect);
+
             Rect result = GUI.Window(WindowId, drawRect, DrawWindow, GUIContent.none, _windowStyle);
 
             _rect.x = result.x;
             _rect.y = result.y;
 
-            if (_open)
+            if (wasOpen)
             {
-                _rect.width = result.width;
-                _rect.height = result.height;
+                // Clamped, not adopted raw. HandleResize already clamps while dragging the grip, but
+                // this is the only guard on the value that actually persists - and a _rect below
+                // MinWidth/MinHeight is not a cosmetic problem, it is the unrecoverable stub above.
+                _rect.width = Mathf.Clamp(result.width, MinWidth, MaxWidth);
+                _rect.height = Mathf.Clamp(result.height, MinHeight, MaxHeight);
                 HandleResize();
             }
 
             ClampWindowToScreen();
             CommitPositionIfSettled();
+            }
+            finally
+            {
+                GUI.matrix = prevMatrix;
+                if (ev != null) ev.mousePosition = prevMouse;
+            }
+        }
+
+        // The pointer position every hit-test in this file uses, taken from the HARDWARE cursor rather
+        // than from Event.current.mousePosition.
+        //
+        // Input.mousePosition is raw device state - no GUI matrix, no clip stack, nothing between it and
+        // the driver - so it cannot be skewed by whatever another plugin left on the GUI stack. It is
+        // bottom-up where IMGUI is top-down, hence the flip. Resetting GUI.matrix in Draw() above should
+        // make Event.current.mousePosition trustworthy again on its own; this is belt and braces, and it
+        // is the version the in-game telemetry actually PROVED correct: across every logged click, the
+        // hardware position landed inside the pill while Event.current.mousePosition did not.
+        private static Vector2 MouseGui()
+        {
+            Vector3 hw = Input.mousePosition;
+            return new Vector2(hw.x, Screen.height - hw.y);
+        }
+
+        // Opening the panel no longer depends on DrawClosedPill's GUI.Button return value.
+        //
+        // That button highlights on hover while never firing, which is exactly the reported symptom -
+        // and hover proves much less than it looks like it does: it is applied at REPAINT time purely
+        // from "does this rect contain the mouse position", so it demonstrates that the rect and the
+        // pointer agree and nothing more. It never needs the click to arrive. GUI.Button, by contrast,
+        // only returns true if it received the MouseDown that set GUIUtility.hotControl AND the matching
+        // MouseUp; anything that consumes either half, or clears hotControl between those two passes,
+        // costs the click with no other visible effect. The profile this runs in carries 17 other
+        // plugins, several drawing their own IMGUI, so that is not hypothetical. F8 is unaffected because
+        // it is a keyboard poll that never touches IMGUI's mouse path at all - which is precisely the
+        // asymmetry that was reported.
+        //
+        // The press is therefore tracked from Event.current directly - the same way HandleResize below
+        // has always done it, and the way BarrkUI's own draggable widgets do it (UI/HudWidgets.cs:758).
+        // The event is deliberately NOT consumed: GUI.DragWindow still needs the MouseDown in order to
+        // drag the pill, and the click is only claimed on MouseUp if the pointer barely moved, so
+        // dragging and clicking stay distinct. DrawClosedPill's own `_open = true` is left in place and
+        // is harmless - both paths assign true rather than toggling, so whichever fires first wins and a
+        // second fire is a no-op.
+        private static void HandleClosedPillClick(Rect pill)
+        {
+            Event e = Event.current;
+            if (e == null) return;
+
+            Vector2 mouse = MouseGui();
+            bool inside = pill.Contains(mouse);
+
+            if (e.type == EventType.MouseDown && e.button == 0 && inside)
+            {
+                _pillPressed = true;
+                _pillPressPos = mouse;
+            }
+            else if (_pillPressed && (e.type == EventType.MouseUp || e.rawType == EventType.MouseUp))
+            {
+                _pillPressed = false;
+                if (inside && (mouse - _pillPressPos).sqrMagnitude <= ClickSlop * ClickSlop)
+                    _open = true;
+            }
+
+            // Hover transitions are logged as well as clicks, and that is the point of this build.
+            // The user reports the pill highlights on hover - and GUI.Button's hover is decided by the
+            // same "does this rect contain Event.current.mousePosition" test this method runs, just in
+            // window-local coordinates instead of screen ones (a 1-2px difference, the window origin).
+            // So hover firing while inside is NEVER true here is a contradiction, and whichever of these
+            // two lines shows up in the log resolves it:
+            //   "hover ENTER" appears        -> the rect and the pointer DO agree; the click events are
+            //                                  the thing going missing, and the fix is in event handling.
+            //   only click lines, no hover   -> they never agree, so what highlights is not this pill and
+            //                                  the clicks logged were aimed at something else entirely.
+            if (inside != _pillHovering)
+            {
+                _pillHovering = inside;
+                LogPill(inside ? "hover ENTER" : "hover EXIT", e, pill, inside);
+            }
+
+            LogPillEvent(e, pill, inside);
+        }
+
+        // Gated on the existing Debug Mode switch, and the reason it exists: if the pill still will not
+        // open, this says WHY without another round of guessing from source.
+        //
+        //   no MouseDown line at all      -> the events never reach Fatty's OnGUI. The cause is upstream
+        //                                    (another plugin, or the cursor state), not in this file.
+        //   MouseDown but never MouseUp   -> something claims the press mid-drag; check hotControl.
+        //   both, with inside=False       -> the rect and the pointer disagree; a coordinate-space fault.
+        //   both, inside=True, still shut -> the toggle is being undone after the fact, look at Draw().
+        //
+        // cursorVisible is logged because Valheim only frees the pointer while the inventory or the ESC
+        // menu is up, which is the one state in which this button can be clicked at all.
+        private static void LogPillEvent(Event e, Rect pill, bool inside)
+        {
+            if (!ConfigManager.debugMode.Value) return;
+            if (e.type != EventType.MouseDown && e.type != EventType.MouseUp &&
+                e.rawType != EventType.MouseDown && e.rawType != EventType.MouseUp) return;
+
+            LogPill($"{e.type}/{e.rawType} btn={e.button}", e, pill, inside);
+        }
+
+        // Logs IMGUI's mouse position next to the HARDWARE one, which is what makes this conclusive
+        // rather than another data point to interpret.
+        //
+        // Event.current.mousePosition is IMGUI space: origin top-left, y growing DOWNWARD.
+        // Input.mousePosition is hardware space: origin bottom-left, y growing UPWARD. Converting one to
+        // the other is exactly `y' = Screen.height - y`. So if `imgui` and `flipped` agree, IMGUI's idea
+        // of where the pointer is matches the real cursor and any offset is in the rect, not the input.
+        // If they DISAGREE, the pointer IMGUI is reasoning about is not the one on screen, and no amount
+        // of adjusting this file's rects will fix it - the cause is the display/window/scale setup.
+        // Screen dimensions are logged too, since a mismatch against the real desktop resolution is its
+        // own answer.
+        private static void LogPill(string what, Event e, Rect pill, bool inside)
+        {
+            if (!ConfigManager.debugMode.Value) return;
+
+            Vector3 hw = Input.mousePosition;
+            Vector2 flipped = new Vector2(hw.x, Screen.height - hw.y);
+
+            FattyPlugin.Instance.Log.LogInfo(
+                $"Fatty pill [{what}]: imgui={e.mousePosition} input={(Vector2)hw} flipped={flipped} " +
+                $"screen={Screen.width}x{Screen.height} pill={pill} inside={inside} " +
+                $"pressed={_pillPressed} cursorVisible={Cursor.visible} lockState={Cursor.lockState} " +
+                $"hotControl={GUIUtility.hotControl} open={_open}");
         }
 
         private static void EnsureInit()
@@ -121,15 +305,52 @@ namespace Fatty.Patches
             // would put the window entirely off-screen, where it cannot be dragged back - and the
             // position persists, so there is no in-game way to recover it.
             ClampWindowToScreen();
-            _committedPos = new Vector2(_rect.x, _rect.y);
+
+            // _committedPos is deliberately LEFT at its NaN sentinel here. Seeding it from the
+            // post-clamp rect made the recovery above equal to the committed value by construction,
+            // so CommitPositionIfSettled could never write it back and the off-screen coordinate
+            // survived in the .cfg forever - every launch re-derived the same rescue from the same
+            // bad stored value. NaN compares equal to nothing, which is the whole point of the
+            // sentinel: the first settled frame persists whatever the clamp recovered. It costs no
+            // spurious write, because BepInEx's ConfigEntry.Value setter early-returns when the
+            // value is unchanged, so a position that needed no rescuing never touches the disk.
         }
 
-        // Keeps at least the draggable title band on screen in both axes.
+        // Keeps a grabbable part of the window on screen in both axes.
+        //
+        // This has to measure the rect actually being DRAWN, not _rect. While the panel is closed
+        // Draw() renders a ClosedWidth x ClosedHeight pill, but _rect still carries the OPEN size -
+        // so clamping x against _rect.width left every x in [72 - 622, -110] legal while putting the
+        // whole 110px pill off the left edge. That is exactly the state a player needs rescuing from,
+        // because the panel is closed whenever it goes missing: the recovery this method exists for
+        // was a no-op precisely when it mattered, and the bad x persisted, so it came back every
+        // launch. At MaxWidth the dead band was wider still.
+        //
+        // The "keep this much visible" figure is capped to the drawn size for the same reason:
+        // demanding 72px of a 30px-tall pill is not a constraint the pill can satisfy, and asking
+        // for more than the window has just pins it to an edge.
         private static void ClampWindowToScreen()
         {
-            float minVisible = GiltFrameTheme.Band + GiltFrameTheme.TitleHeight;
-            _rect.x = Mathf.Clamp(_rect.x, minVisible - _rect.width, Screen.width - minVisible);
-            _rect.y = Mathf.Clamp(_rect.y, 0f, Screen.height - minVisible);
+            // Alt-tab and minimise can report a 0-sized screen for a frame. Clamping to that would
+            // drag the panel to a junk coordinate and - now that the commit below is no longer gated
+            // on the window being open - persist it.
+            if (Screen.width < 1 || Screen.height < 1) return;
+
+            float w = _open ? _rect.width : ClosedWidth;
+            float h = _open ? _rect.height : ClosedHeight;
+
+            float band = GiltFrameTheme.Band + GiltFrameTheme.TitleHeight;
+            float keepX = Mathf.Min(band, w);
+            float keepY = Mathf.Min(band, h);
+
+            // Mathf.Clamp is `if (v < min) v = min; else if (v > max) v = max`, so handing it min > max
+            // makes it alternate between the two on successive calls instead of settling. Draw() calls
+            // this on every OnGUI pass, so that would flip _rect several times a frame and defeat
+            // CommitPositionIfSettled's exact-equality gate - a per-frame .cfg write, the very thing
+            // 1.1.8 set out to remove. Ordering the bounds keeps repeated application idempotent.
+            float minX = keepX - w;
+            _rect.x = Mathf.Clamp(_rect.x, minX, Mathf.Max(minX, Screen.width - keepX));
+            _rect.y = Mathf.Clamp(_rect.y, 0f, Mathf.Max(0f, Screen.height - keepY));
         }
 
         // BepInEx's ConfigFile defaults to SaveOnConfigSet, and ConfigEntry.Value fires SettingChanged
@@ -459,16 +680,20 @@ namespace Fatty.Patches
             Event e = Event.current;
             if (e == null) return;
 
-            if (!_resizing && e.type == EventType.MouseDown && e.button == 0 && grip.Contains(e.mousePosition))
+            // Same hardware-derived pointer as the pill, and for the same reason - a grip that cannot be
+            // grabbed is the identical failure one corner down.
+            Vector2 mouse = MouseGui();
+
+            if (!_resizing && e.type == EventType.MouseDown && e.button == 0 && grip.Contains(mouse))
             {
                 _resizing = true;
-                _resizeStartMouse = e.mousePosition;
+                _resizeStartMouse = mouse;
                 _resizeStartSize = new Vector2(_rect.width, _rect.height);
                 e.Use();
             }
             else if (_resizing && e.type == EventType.MouseDrag && e.button == 0)
             {
-                Vector2 delta = e.mousePosition - _resizeStartMouse;
+                Vector2 delta = mouse - _resizeStartMouse;
                 _rect.width = Mathf.Clamp(_resizeStartSize.x + delta.x, MinWidth, MaxWidth);
                 _rect.height = Mathf.Clamp(_resizeStartSize.y + delta.y, MinHeight, MaxHeight);
                 e.Use();
@@ -487,7 +712,6 @@ namespace Fatty.Patches
         private static void EnsureStyles()
         {
             if (_stylesReady) return;
-            _stylesReady = true;
 
             GiltFrameTheme.EnsureBuilt();
 
@@ -549,11 +773,23 @@ namespace Fatty.Patches
             // CalcHeight for the actual layout width every frame, so wrapped rows grow correctly.
             _wrappingValueStyle = new GUIStyle(GiltFrameTheme.Value) { wordWrap = true };
             _wrappingHeaderStyle = new GUIStyle(GiltFrameTheme.Header) { wordWrap = true };
+
+            // Claimed at the END, not up front. Set first, anything throwing partway through left
+            // every later frame running on half-null GUIStyles with no way to retry - and the very
+            // next call hands a null style to GUI.Window, which takes the whole panel down for the
+            // session. Retrying is the cheaper failure: Plugin.OnGUI already logs whatever threw.
+            _stylesReady = true;
         }
 
+        // HideAndDontSave for the same reason GiltFrameTheme flags its own textures (see that file's
+        // header): without it Unity collects these on the next scene load, and since _stylesReady
+        // latches true they are never rebuilt - so after one world reload the closed pill's
+        // background and the resize grip were being drawn from destroyed textures for the rest of
+        // the session. The pill is the only way back into a closed panel, so it is the last thing
+        // that should quietly stop rendering.
         private static Texture2D MakeTex(Color c)
         {
-            var tex = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+            var tex = new Texture2D(1, 1, TextureFormat.RGBA32, false) { hideFlags = HideFlags.HideAndDontSave };
             tex.SetPixel(0, 0, c);
             tex.Apply();
             return tex;

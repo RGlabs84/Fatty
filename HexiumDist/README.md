@@ -5,7 +5,7 @@
 ![Valheim Mod](https://img.shields.io/badge/Valheim-Food_Overhaul-orange.svg)
 [![Multiplayer Compatible](https://img.shields.io/badge/Multiplayer-Server--Synced-blue.svg)]()
 [![Framework](https://img.shields.io/badge/Requires-BepInEx-red.svg)]()
-[![Version](https://img.shields.io/badge/Version-1.1.9-lightgrey.svg)]()
+[![Version](https://img.shields.io/badge/Version-1.1.10-lightgrey.svg)]()
 
 *Stop surviving. Start feasting.* 
 

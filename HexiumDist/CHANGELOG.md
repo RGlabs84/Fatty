@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.1.10] - Getting the Feast Ledger Back
+
+### Fixed
+
+- **🐧 Linux (Proton) only: the Ledger now survives a desktop that scales X11 apps.** On a Wayland
+  session where one display is set to a fractional scale, the Ledger's buttons would highlight under
+  the mouse and then ignore the click, while the **F8** hotkey opened the panel perfectly. Nothing was
+  wrong with the click — the game and the desktop simply disagreed about where the pointer was, by
+  exactly the scaling factor. **This is not a Fatty bug and it is not a Valheim bug**: it affects every
+  mod that draws this style of window, and the real cure is to set your displays to the same scale (on
+  KDE: System Settings → Display → Legacy applications (X11)). Fatty now reads the pointer straight
+  from your mouse rather than trusting what it is handed, so the Ledger keeps working even when that
+  setting is wrong. **Windows players were never affected and nothing changes for them.**
+- **Opening the panel by clicking ▲ FEAST could collapse it to a sliver.** Opening it that way also,
+  wrongly, shrank it to the size of the little button it had just replaced — a 110×30 stub with
+  nothing drawable inside, so it drew nothing at all and the button vanished with it. The hotkey was
+  unaffected, since it toggles the panel from outside the drawing code. The panel now keeps its real
+  size whichever way you open it, and can no longer be shrunk below its minimum by any route.
+- **The Feast Ledger could vanish completely, with no way to get it back.** Drag the panel far
+  enough past the left edge of the screen, close it, and the little **▲ FEAST** button went with it —
+  and because the panel remembers where you left it, it stayed gone on every launch after that.
+  1.1.8 added a safety net meant to prevent exactly this, but it measured the *open* panel while the
+  thing actually on screen was the small closed button, so it left that button sitting as much as
+  440 pixels beyond the edge and called it safe. It now measures whatever is really being drawn, so
+  a grabbable strip is always on screen. If your saved position is already bad, launching 1.1.10
+  rescues it — and **remembers** the rescue, instead of quietly re-doing it every session while the
+  bad position stays on file.
+- **The ▲ FEAST button could stop drawing after you reloaded a world.** Its background was being
+  discarded by the engine on the scene change and never rebuilt, so the button faded away for the
+  rest of the session the moment you returned to the main menu and loaded a save again. Since that
+  button is the only way to reopen a closed panel, losing it meant losing the panel.
+- **A stumble while building the panel's styling took the panel down for the whole session.** It now
+  retries on the next frame rather than staying broken until you restart the game.
+
 ## [1.1.9] - Fruit, and the Food Fatty Was Never Counting
 
 ### Fixed

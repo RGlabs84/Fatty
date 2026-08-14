@@ -168,6 +168,40 @@ full audit table.
 - **No screen clamp on the restored rect.** `EnsureInit()` now calls `ClampWindowToScreen()` (also
   called every `Draw()`), keeping at least the title band on screen in both axes — a position saved
   on a monitor you no longer have can no longer strand the panel off-screen with no in-game recovery.
+  **As first written this fix did not work, and 1.1.10 had to repair it — see below.**
+
+## The clamp must measure the DRAWN rect, not `_rect` (1.1.10)
+
+`_rect` always holds the **open** size; while the panel is closed `Draw()` renders a
+`ClosedWidth`×`ClosedHeight` pill instead. 1.1.8's clamp used `_rect.width` unconditionally, so the
+x lower bound was `72 - 622 = -550` while the thing on screen was 110px wide — every x in
+`[-550, -110]` was "legal" with the entire pill off the left edge. **The recovery was a no-op in
+exactly the state that needs recovering**, because the panel is closed whenever it goes missing, and
+the pill is the only way back in. A sweep of 4 screen sizes × 3 widths × 715 x-positions found
+15,360 such states; the repaired clamp has none. Cap the keep-visible figure to the drawn size too —
+demanding 72px of a 30px-tall pill is not satisfiable.
+
+Two more things that made it permanent rather than merely annoying:
+
+- **`EnsureInit` seeded `_committedPos` from the POST-clamp rect**, so the rescue equalled the
+  committed value by construction and `CommitPositionIfSettled` could never write it back. The bad
+  coordinate stayed in the `.cfg` forever and every launch re-derived the same rescue. Leave the
+  `NaN` sentinel alone — that is what it is for; BepInEx's `Value` setter early-returns when
+  unchanged, so a position that needed no rescuing still costs no write.
+- **`Mathf.Clamp` is `if (v < min) v = min; else if (v > max) v = max`** — hand it `min > max` and it
+  *alternates* between the two on successive calls instead of settling. `Draw()` clamps on every
+  OnGUI pass, so that would defeat `CommitPositionIfSettled`'s exact-equality gate and reinstate the
+  per-frame `.cfg` write 1.1.8 existed to remove. Order the bounds with `Mathf.Max`.
+
+`FeastLedgerGui.MakeTex` also has to set `hideFlags = HideAndDontSave` — the same rule
+`GiltFrameTheme`'s header states, which its own local copy was not following. Without it Unity
+collects the pill background and grip on the next scene load, and since `_stylesReady` latches true
+they are never rebuilt. `_stylesReady` is now claimed at the **end** of `EnsureStyles`: set up front,
+anything throwing partway leaves permanently-null styles, and a null style reaches `GUI.Window` and
+takes the panel down for the session.
+
+**BarrkUI inherited all three 1.1.8 fixes verbatim, so it inherits this bug too wherever it has a
+collapsed state whose drawn size differs from its stored rect.** Check it before trusting that audit.
 - **Milestone lines could overflow.** `GiltFrameTheme`'s styles are all `wordWrap = false` /
   `clipping = Clip` (`CalcSize` measures the string as one unwrapped line), and the tier-3
   Meat/Sweet/Eitr/Fish milestone lines join two full award descriptions — long enough to actually
