@@ -90,6 +90,14 @@ namespace Fatty.Configuration
         public static ConfigEntry<float> drunkBlockingPenalty;
         public static ConfigEntry<float> drunkBlockStaminaPenalty;
 
+        // Note: the Feast Ledger's Puke button - gameplay (it empties the stomach), so synced.
+        public static ConfigEntry<bool> allowPukeButton;
+
+        // Note: screen effects - how drunkenness LOOKS on your own monitor. Local on purpose: motion
+        // blur is a comfort/accessibility choice, and a server forcing it on would be forcing nausea.
+        public static ConfigEntry<bool> drunkMotionBlur;
+        public static ConfigEntry<float> drunkBlurStrength;
+
         // Note: Synergy configs
         public static ConfigEntry<bool> enableSynergies;
         public static ConfigEntry<float> maxEffectDuration;
@@ -109,6 +117,14 @@ namespace Fatty.Configuration
         public static ConfigEntry<KeyboardShortcut> breakdownToggleKey;
         public static ConfigEntry<int> feastLedgerFontSizeDelta;
 
+        // Note: Feast export - server-side per-player food history, written for BarrkBOT to read.
+        // Synced, and server-authoritative on purpose: the SERVER is the only machine that reads
+        // these, because it is the one that pulls snapshots and writes the file. See
+        // Patches\FeastExportPatches.cs for why the pull direction matters.
+        public static ConfigEntry<bool> enableFeastExport;
+        public static ConfigEntry<int> feastExportIntervalSeconds;
+        public static ConfigEntry<int> feastSyncIntervalSeconds;
+
         public static void Init(ConfigFile config)
         {
             serverConfigLocked = config.Bind("1 - General", "Lock Configuration", true, "If on, the configuration is locked and can be changed by server admins only.");
@@ -118,6 +134,8 @@ namespace Fatty.Configuration
                 "Vanilla fades a food's stats to nothing as its timer runs down. ON = you keep 100% of a food's stats until its timer expires, then lose them all at once. OFF = vanilla's gradual decay curve.");
             maxFoodStacks = BindSynced(config, "2 - Core", "Max Food Stacks", 4,
                 "How many times the same food can be eaten at once. Vanilla = 1 (no stacking), 4 = default. Each extra stack is worth less - see section 3.", 1, 20);
+            allowPukeButton = BindSynced(config, "2 - Core", "Allow Puke Button", true,
+                "ON = the Feast Ledger shows a Puke button that empties every food slot and the drink slot at once (click twice to confirm). Lifetime counts are never refunded - what you ate stays eaten. OFF = the button is hidden; Pukeberries still work as in vanilla.");
 
             stackDiminishingReturnStep1 = BindSynced(config, "3 - Stacking", "Stack 2 Multiplier", 0.3f,
                 "Fraction of a food's stats granted by its 2nd stack. 1.0 = full value, 0.3 = 30% (default), 0.0 = nothing. The 1st stack is always 100%.", 0f, 1f);
@@ -275,6 +293,20 @@ namespace Fatty.Configuration
                 new ConfigDescription(
                     "FLAT points added to every Feast Ledger text size. 0 = the theme's own base sizes, 2 = +2pt (default, easier to read), negative = smaller. Takes effect on the next panel open (styles are built once).",
                     new AcceptableValueRange<int>(-6, 12)));
+
+            // Note: Feast export. OFF by default - this writes a file naming every player and what
+            // they eat, so it is opt-in rather than something a server starts doing unannounced.
+            enableFeastExport = BindSynced(config, "11 - Feast Export", "Enable Feast Export", false,
+                "OFF by default. ON = the SERVER collects every player's lifetime food counts and writes them to BepInEx\\config\\Fatty\\BarrkBOT_feasts.json, for a Discord bot or web dashboard to read. Existing history is included the first time a player syncs, so nobody starts from zero. OFF = nothing is collected, nothing is sent and no file is created. Only the SERVER's copy of this setting does anything.");
+            feastExportIntervalSeconds = BindSynced(config, "11 - Feast Export", "Feast Export Interval Seconds", 60,
+                "How often the server rewrites the export file, in seconds. 60 = default. Only matters when Enable Feast Export is on.", 10, 3600);
+            feastSyncIntervalSeconds = BindSynced(config, "11 - Feast Export", "Feast Sync Interval Seconds", 300,
+                "How often the server asks each connected player for a fresh copy of their food counts, in seconds. 300 = default (five minutes); this is a leaderboard, not telemetry, so there is no reason to ask often. A player who has just joined is always asked straight away regardless of this.", 30, 3600);
+
+            drunkMotionBlur = BindLocal(config, "12 - Effects", "Drunk Motion Blur", true,
+                "ON = while you are Drunk the screen smears with heavy motion blur and ghost trails, fading in as you get drunk and out as you sober up. Works even with Motion Blur off in Valheim's graphics settings, and puts your own setting back afterwards. OFF = Drunk changes nothing on screen.");
+            drunkBlurStrength = BindLocalRanged(config, "12 - Effects", "Drunk Blur Strength", 0.6f,
+                "How heavy the drunk blur is. 0.0 = barely there, 0.6 = default, 1.0 = the room will not stop moving. Takes effect live.", 0f, 1f);
 
             // Carry across anything the 1.1.9 rename would otherwise have silently reset to default.
             MigrateRenamedKeys(config);

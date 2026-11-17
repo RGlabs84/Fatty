@@ -1,5 +1,105 @@
 # Changelog
 
+## [1.2.0] - Last Call
+
+### Added
+
+- **Puke button in The Feast Ledger.** A **Puke** button now sits on the right of the Ledger's
+  Stomach heading. Click once and it arms (**Really? Click again**, in red); click again within 3
+  seconds and every food slot *and* the drink slot are emptied at once, all stacks included, with
+  vanilla's own Pukeberries retching effect and sound (borrowed from the `Pukeberries` item, so the
+  male/female variant matches your character) and a damage flash. Max health, stamina and eitr drop
+  back to base immediately, and Fatty's synergies, drink draughts and Drunk end on the same frame
+  because they follow what is in your stomach.
+  - **Nothing is refunded.** The Lifetime Feast Log, category counts, Fatness and milestones keep
+    every item you puked: what you ate stays eaten.
+  - **Vanilla mead effects are left alone.** A mead's own status effect (regen, a resistance) is
+    also vanilla's potion cooldown, so stripping it would make the button a "drink, puke, drink
+    again" loop for unlimited healing. Pukeberries leave them in place too.
+  - New server-synced setting **`2 - Core` → `Allow Puke Button`** (default on). Off hides the
+    button; Pukeberries keep working as before.
+- **Drunk motion blur.** While you are Drunk the screen smears with motion blur and ghosting trails.
+  It fades in over about 3 seconds and fades out over about 5 seconds as you sober up. It drives the
+  game's own post-processing motion blur (shutter angle plus frame blending, which vanilla ships at
+  zero), so it works even with Motion Blur turned off in Valheim's graphics settings, and your own
+  setting is put back afterwards, including if you changed it while drunk.
+  - New local settings, section **`12 - Effects`**: **`Drunk Motion Blur`** (default on) and
+    **`Drunk Blur Strength`** (0.0–1.0, default 0.6). Local on purpose: motion blur is a comfort
+    choice, and a server should not be able to force it on anyone.
+
+### Changed
+
+- README rewritten to the Wubarrk store README schema v2.
+- Fatty now references `assembly_postprocessing.dll` (shipped with both the game client and the
+  dedicated server). Static reference check clean against both.
+
+## [1.1.14] - Valheim 1.0.21
+
+### Changed
+
+- **Rebuilt for Valheim 1.0.21.** Rebuilt against the Valheim 1.0.21 game assemblies (network version 41) on BepInExPack 5.4.2360, and re-verified: static reference check clean against both the client and dedicated-server assemblies, and the mod boots on a real 1.0.21 dedicated server. Every Harmony target (including ServerSync's) still resolves. Fatty's food hooks (`Player.UpdateFood`, `EatFood`, `CanEat`, `GetTotalFoodValue`, the Hud food slots) are untouched by the update; the changed `Player.UpdateStats`, `Player.Save`/`Load`, `PlayerProfile.GetStat` and `CookingStation` code does not intersect anything Fatty patches or reads, and Fatty keeps its per-character data in `Player.m_customData` (which vanilla still saves and loads the same way) rather than appending to the player save. No source change and no behaviour change.
+- Website link moved to https://www.rossgilsonlabs.dev.
+- The BepInExPack dependency is now `denikson-BepInExPack_Valheim-5.4.2360`.
+
+## [1.1.13] - Valheim 1.0.16
+
+### Changed
+
+- **Rebuilt for Valheim 1.0.16.** Rebuilt against the 1.0.16 game assemblies (client build
+  25527674 / server build 25527701, network version 40) and BepInExPack Valheim **5.4.2350**. The
+  update removed `ObjectDB.GetAllFoodItems()` and `ButtonSfx.Start()`, neither of which Fatty
+  calls, so every Harmony target (34, ServerSync's included) and every game member Fatty reads -
+  the player's food list and regen timer, the five food HUD slots, the status-effect list,
+  `ObjectDB`, and the `ZNet` lifecycle the feast export hangs off - was unchanged, so there is
+  **no source change and no behaviour change**. Verified by loading on a real 1.0.16 Linux
+  dedicated server: every patch applies, the food HUD expands to its 5 slots, and the log is
+  clean.
+
+## [1.1.12] - Valheim 1.0.7
+
+### Changed
+
+- **Built for Valheim 1.0.7.** Rebuilt against the 1.0.7 game assemblies (client build 25185596 /
+  server build 25185644, network version 39) and BepInExPack Valheim **5.4.2350**, which the package
+  now lists as its dependency in place of 5.4.2333. Every Harmony target (34, ServerSync's included)
+  and every game member Fatty reads - the player's food list and regen timer, the five food HUD
+  slots, the status-effect list, `ObjectDB`, and the `ZNet` lifecycle the feast export hangs off -
+  was checked against the 1.0.7 decompile and none of them moved, so there is **no source change
+  and no behaviour change**. Verified by loading on a real 1.0.7 Linux dedicated server: every patch
+  applies, the food HUD expands to its 5 slots, and the log is clean.
+
+## [1.1.11] - The Feast, Shared
+
+### Added
+
+- **Server-wide feast records, for Discord bots and dashboards.** A server can now collect what
+  everyone eats into a single file — `BepInEx/config/Fatty/BarrkBOT_feasts.json` — so a bot can
+  answer "what's Asfaloth's favourite food", "who has eaten the most Serpent Stew" and "who is the
+  biggest glutton on the server". **It is OFF by default** and lives in the new config section
+  *11 - Feast Export*; a server that leaves it alone collects nothing, sends nothing and creates no
+  file. Only the **server's** copy of the setting does anything, and it takes effect immediately —
+  no restart needed to turn it on or off.
+- **Your existing history counts.** The first time you connect to a server with this switched on,
+  your **whole** lifetime feast log goes up as-is. Nobody starts from zero, and there is nothing to
+  migrate or re-eat — if you've been playing since 1.1.0, all of it is already there.
+- **Players who log off keep their place.** Records persist across relogs and server restarts, so a
+  leaderboard doesn't reset to whoever happens to be online.
+
+### Fixed
+
+- **The Feast Ledger now closes when you close your inventory or the ESC menu**, like every other
+  window in the game, instead of being left hanging over the world with no way to click it. The
+  small **▲ FEAST** tab stays where it is — that's how you open the panel again.
+
+### Notes for server admins
+
+- The export is written every **60s** (configurable), and each player is asked for a fresh copy of
+  their counts every **300s** (configurable). Someone who has just joined is asked straight away.
+- Counts are **whole totals, not "since yesterday"**. A number can jump the first time a player
+  syncs after updating — that's their existing history arriving, not an error.
+- The file names raw prefabs (`CookedMeat`, not "Cooked Meat"), and `favourite_food` is `null`
+  when there's a tie. A player who has never been seen is **absent** rather than listed with zeroes.
+
 ## [1.1.10] - Getting the Feast Ledger Back
 
 ### Fixed

@@ -1,262 +1,389 @@
-<div align="center">
-  
-# 🍖 FATTY: The Valheim Culinary Overhaul 🍻
+<!-- README schema v2 -->
+# 🍖 Fatty
 
-![Valheim Mod](https://img.shields.io/badge/Valheim-Food_Overhaul-orange.svg)
-[![Multiplayer Compatible](https://img.shields.io/badge/Multiplayer-Server--Synced-blue.svg)]()
-[![Framework](https://img.shields.io/badge/Requires-BepInEx-red.svg)]()
-[![Version](https://img.shields.io/badge/Version-1.1.10-lightgrey.svg)]()
+![FATTY](https://img.shields.io/badge/FATTY-STOP_SURVIVING%2C_START_FEASTING-c9a227?style=for-the-badge&labelColor=1b1b1b)
+![VERSION](https://img.shields.io/badge/VERSION-1.2.0-8b1e1e?style=for-the-badge&labelColor=1b1b1b)
+![CLIENT SIDE](https://img.shields.io/badge/CLIENT--SIDE-SERVER_OPTIONAL-1f4e79?style=for-the-badge&labelColor=1b1b1b)
 
-*Stop surviving. Start feasting.* 
+> *The skald gave up counting the plates at forty. "He eats as if Fenrir were coming for the leftovers," muttered the jarl's wife. The Viking reached for a fifth bowl of stew, belched loudly enough to scatter the goats, and said that Fenrir would have to wait his turn like everybody else.*
 
-Fatty is a massive overhaul to Valheim's food system: it stops food stats from decaying, grows your food bar from 3 slots to 5 (a new **4th food slot** *and* a dedicated **5th drink slot**), lets you stack the same food for bonus stats, rewards a varied diet with powerful synergy buffs, gives meads and drinks their own buffs, and permanently makes you tougher the more you eat. Every buff comes with its own custom icon.
+### Eat. Keep every point of it. Get bigger forever.
 
----
-</div>
+Fatty rebuilds Valheim's food. Stats stop fading, the food bar grows to **four food slots and a drink slot of its own**, and the same food stacks into one slot for more. Food lasts twice as long, and stamina and eitr refill as fast as vanilla however big your bars get.
 
-## ⚠️ Upgrading
-
-> **From 1.1.x?** Getting Fat's rewards changed shape: the five diet categories no longer grant health directly, they each grant their own stat instead, and health now comes from the new Fatness tally (total food eaten). Your existing per-category counts carry over untouched and immediately start feeding the new stats — you don't lose progress, but your current health bonus will move to whichever stats your diet has actually been feeding.
->
-> **From 1.0.x?** Your food data file gains the new Eitr category and drink flag, so Fatty runs a **one-time migration** on first launch and re-derives every category. Your old file is backed up to **`Fatty_FoodData.json.bak`** — restore any hand-edits from there afterwards.
+Then it rewards *how* you eat. The right mix of foods switches on a buff, whatever is in your drink slot picks a draught, a slot full of Tasty Mead gets you **Drunk**, and every meal counts toward permanent stats for the life of your character. Every buff has its own icon, every food mod's food is sorted for you, and **The Feast Ledger** shows exactly what is in your stomach.
 
 ---
 
-## 🍗 Guide to Being a Fatty
+![NEW IN 1.2.0](https://img.shields.io/badge/NEW_IN_1.2.0-THE_PUKE_BUTTON-8b1e1e?style=for-the-badge&labelColor=1b1b1b)
 
-Fatty changes a lot at once. If you've opened your food bar, seen five slots doing five different things, and gone *"...huh?"* — this is for you. Everything below happens **automatically**; there's nothing to activate. You just eat.
+**Ate the wrong thing? Bring it all back up.** The Feast Ledger now has a **Puke** button.
 
-### The 60-second version
-- **Eat food. It doesn't decay.** Whatever a food gives you, it keeps giving until its timer hits zero, then it's gone — no gradual fade like vanilla.
-- **You have 5 slots: 4 for solid food, 1 just for drinks.** A drink can never get pushed out by food, and food can never steal the drink slot.
-- **Eat the same food again to stack it into the same slot**, for more stats out of that one slot (up to 4 copies by default). Different foods take different slots.
-- **Eating a good spread of food triggers free buffs** (below) and slowly, permanently makes you tougher (also below) — no crafting, no activation, just eating what's in front of you.
+| You | It |
+|---|---|
+| **Open The Feast Ledger** — the ▲ FEAST tab or **F8** | the **Puke** button sits at the top, whenever there is something to bring up |
+| **Click Puke** | it arms and asks **Really? Click again** |
+| **Click again** within a few seconds | every food slot and the drink slot empty — every stack — with vanilla's retching |
+| **Leave it** | it disarms; nothing happens |
+| **Your buffs** | diet synergies, draughts and Drunk end on their own — they follow what is in your stomach |
+| **Your history** | stays. Lifetime counts, Fatness and milestones are never refunded: what you ate stays eaten |
 
-### Stacking, and why a slot's timer might surprise you
-Stack the same food and each extra copy is worth **less** than the last — so stacking is strong, but spamming one food isn't a full replacement for a varied diet:
+🌀 **Drunk motion blur** — heavy ghosting trails that fade in as you get drunk and out as you sober up, even with Motion Blur off in Valheim's graphics settings, and your own setting comes back afterwards · 🔒 **Admins** can take the Puke button away from everyone with `Allow Puke Button`.
 
-| Copy | Value |
-| :--- | :--- |
-| 1st | 100% |
-| 2nd | 30% |
-| 3rd | 20% |
-| 4th+ | 10% |
+---
 
-The **"×N" badge** on a slot tells you how many copies are stacked there.
+![BEFORE YOU INSTALL](https://img.shields.io/badge/BEFORE_YOU_INSTALL-READ_THIS-b8860b?style=for-the-badge&labelColor=1b1b1b)
 
-**Only the most-recently-eaten item in a stack actually counts down.** Every older copy in that same slot is held in reserve, frozen, until the active one runs out — then the next-most-recent copy picks up automatically and starts its own countdown. So a slot showing "×4, 75m" means *the item you just ate* empties in 75 minutes, and the three behind it are banked and waiting their turn, not also draining in the background. The thin bar under the icon shows you each individual item and dims them one at a time as each takes its turn, so you can watch the stack empty in eaten order.
+| | If… | Then… |
+|---|---|---|
+| 🤝 | you play on a **server** | server and players update together — it only accepts the same version, and its gameplay settings replace yours. |
+| ⏱️ | you run **blacks7ar's FoodDurationMultiplier** | Fatty uses that mod's food duration instead of its own. The two never multiply. |
+| 🍖 | you want **vanilla food timers** | food lasts **twice as long** out of the box — set `Food Duration Multiplier` to 1.0. |
+| 📁 | you **hand-edit** `Fatty_FoodData.json` | `Rebuild Food Data` overwrites your edits. The old file is kept as `Fatty_FoodData.json.bak`. |
+| 🌀 | screen blur makes you **queasy** | switch `Drunk Motion Blur` off, or turn `Drunk Blur Strength` down. |
 
-If you want the full picture — every item's own time left, its stack position, and exactly what it's contributing — click the gold **▲ FEAST** tab (or press **F8**) to open The Feast Ledger.
+---
 
-### Reading your food bar at a glance
+![I](https://img.shields.io/badge/I-THE_BIGGER_STOMACH-c9a227?style=for-the-badge&labelColor=1b1b1b)
 
-| What you see | What it means |
-| :--- | :--- |
-| Icon | The food (or drink) occupying that slot |
-| **×N** badge (top-right) | How many times you've stacked that food |
-| Number under the icon | When the **active item** (the one you most recently ate) runs out — the next copy in the stack then takes over automatically |
-| Segmented bar under the icon | One segment per stacked item, dimming as each runs down |
+**Five slots, no decay, and the same food stacks.**
 
-The gold **▲ FEAST** tab (drag it anywhere; press **F8** to toggle it too) opens The Feast Ledger — see below.
+| | |
+|---|---|
+| 🛑 **No decay** | a food gives every point until its timer ends — no slow fade |
+| 🍽️ **Four food slots + a drink slot** | four foods and a drink at once; food can't take the drink slot, and a drink can't push out food |
+| 🥞 **Stacking** | eat the same food again and it stacks in its slot, up to four — each copy worth less: 100% · 30% · 20% · 10% |
+| ⏳ **Twice as long** | food lasts double out of the box, no second mod needed |
+| ⚡ **Regen keeps up** | stamina and eitr refill as fast as vanilla however big Fatty makes the bars — never slower |
+| ✨ **Gold trim** | the food icons get a gold frame, and a **×N** badge shows each stack |
 
-### The buffs that just... happen
-Eat the right mix and a **Status Effect** appears with no input from you — keep eating that mix and it stays up; let it lapse and it fades. Its icon shows a live countdown to the moment your diet stops qualifying, so you know exactly how long you have to top it back up.
+<details>
+<summary>📖 <b>Read the saga</b> — stacks, timers and the drink slot</summary>
+
+**Only the newest copy in a stack counts down.** Older copies wait in reserve, frozen, until the active one runs out; then the next one takes over. A slot showing "×4, 75m" means *the one you just ate* empties in 75 minutes, and the three behind it are banked, not draining. Prefer a picture? `Use Segmented Stack Bar` swaps the badge for a thin bar under the icon, one segment per item, dimming as each takes its turn.
+
+| On the food bar | |
+|---|---|
+| **The icon** | the food or drink in that slot |
+| **×N** | how many copies are stacked there |
+| **The number under it** | when the active copy runs out — the next one then takes over |
+
+**The drink slot takes every drink**, including meads that only give a timed effect, like Frost Resistance or Tasty Mead. A mead holds the slot for its own effect's length or twenty minutes, whichever is longer, so a health mead's draught doesn't vanish seconds after you drink it.
+
+**Drinking is never blocked.** If the drink slot is busy, the mead works exactly as in vanilla — it just gives no Fatty draught, so you can never be locked out of a health mead mid-fight. **Nor can you drink more often than vanilla**: the cooldown between meads is untouched. Tasty Mead is the one exception, because its effect does nothing at all — see Drunk.
+
+**Regen scaling exists because vanilla refills stamina and eitr at a flat rate** that ignores how big the bar is, so any mod that enlarges your pools quietly makes them refill slower. Fatty scales the rate with the pool to keep refill *time* at vanilla's — capped, and never below vanilla.
+
+</details>
+
+---
+
+![II](https://img.shields.io/badge/II-THE_FEAST_LEDGER-5b2c83?style=for-the-badge&labelColor=1b1b1b)
+
+**Everything in your stomach, on one gilt page.**
+
+| You | It |
+|---|---|
+| **▲ FEAST tab** or **F8** | opens The Feast Ledger |
+| **Click a stack** — "Tasty Mead ×4" | opens it out: each item's time left, its place on the stacking ladder, and the health, stamina and eitr it gives right now |
+| **Getting Fat** | your progress toward every permanent perk |
+| **Lifetime Feast Log** | every food you've ever eaten on this character, and how many times |
+| **Puke** | empties your stomach — click twice |
+| **Drag the title** · **the corner grip** | moves it · resizes it; it remembers, even after a restart |
+| **Close the inventory or the ESC menu** | the Ledger closes with it; the ▲ FEAST tab stays to bring it back |
+
+<details>
+<summary>📖 <b>Read the saga</b> — the frame, the text and the tab</summary>
+
+The Ledger sits in a full gilt picture frame: a polished double gold rail with mitred acanthus corners and a crest top and bottom, over near-black leather. Its text runs a couple of points larger than the theme's base size; `Feast Ledger Font Size Delta` makes it bigger, smaller or plain.
+
+The **▲ FEAST** tab can be dragged anywhere and never leaves the screen — a position saved on a monitor you no longer have is pulled back into view, so the Ledger can't get lost. The F8 key is rebindable with `Breakdown Panel Hotkey`.
+
+</details>
+
+---
+
+![III](https://img.shields.io/badge/III-DIET_SYNERGIES-2e5e3a?style=for-the-badge&labelColor=1b1b1b)
+
+**Eat the right mix and a buff appears. Nothing to craft, nothing to click.**
 
 | You're eating | You get |
-| :--- | :--- |
-| 1 Meat + 1 Produce | 🟢 Balanced Diet — big Health & Stamina regen |
-| 3 Sweets + 1 Drink | 🩷 Sugar Rush — big movement speed |
-| 2 Fish + 1 Produce | 🔵 Fisherman's Friend — faster, cheaper swimming |
-| 3 Meat + 1 Drink | 🟤 Lumberjack's Feast — more carry weight & woodcutting damage |
+|---|---|
+| **1 Meat + 1 Produce** | 🟢 **Balanced Diet** — double health and stamina regen |
+| **3 Sweets + 1 Drink** | 🩷 **Sugar Rush** — a big burst of movement speed |
+| **2 Fish + 1 Produce** | 🔵 **Fisherman's Friend** — faster swimming for a fraction of the stamina |
+| **3 Meat + 1 Drink** | 🟤 **Lumberjack's Feast** — more carry weight, and an axe that bites deeper into trees |
 
-Whatever's in your **drink slot** grants its own buff too, chosen by what that drink actually does (an eitr mead → Arcane Draught, a stamina mead → Reveler's, and so on) — see the [Mead & Drink Buffs](#-mead--drink-buffs) table below for the full list. You don't pick a draught; the drink you're holding picks it for you.
+<details>
+<summary>📖 <b>Read the saga</b> — countdowns, the half-hour ceiling, and a worked meal</summary>
 
-**Fill your drink slot with Tasty Mead** and you get **Drunk** — harder hitting, harder to stagger, but a much weaker guard. It's the one drink you can chug back-to-back, specifically so this is reachable.
+**Each buff's icon counts down to the moment your diet stops qualifying** — eat more of what is about to run out and the timer pushes back out. Banked copies of a food count in the order they will actually burn, so the countdown shows your real reserve, not one slot's timer.
 
-### The buffs that never go away
-Separately from all of the above, Fatty is quietly counting **every food you've ever eaten, by category**, for the life of your character. Cross a threshold in a category and you get a small slice of a **permanent** stat matched to that category's flavour — Meat → carry weight, Sweet → stamina, Eitr → max eitr, Fish → swim speed, Produce (vegetables *and* fruit) → all-round regen — and none of it has anything to do with your current stomach; it's never lost, even if you starve. Meat/Sweet/Eitr/Fish don't repeat the same reward three times either: the *2nd* tier swaps in a different permanent perk (Sword & Axe skill, stamina regen, eitr regen, or reduced swim stamina cost) before the 3rd tier goes back to the flat bonus. On top of all that, your **total** food eaten across every category (a separate "Fatness" tally, which alternates the same way — max health, then health regen, then max health again) permanently raises your max health. It's deliberately per-category, so it rewards actually eating a varied diet over a long playthrough rather than spamming one cheap food. Check your progress any time in the **Getting Fat** section of the ▲ FEAST panel.
+**One activation lasts half an hour at most.** Between doubled food time and four banked stacks, a buff could otherwise sit on you for well over an hour, so every food-driven effect — the four synergies, the four draughts and Drunk — ends at `Max Effect Duration` even if your diet still qualifies, and comes back only once its recipe stops being met and is met again. Set it to 0 for no ceiling. Getting Fat's perks are permanent and never touched by it.
 
-### A worked example
-You eat 3 Cooked Meat, 1 Carrot Soup, and a Stamina Mead:
-- **Meat slot:** shows "×3" — 1st Meat at 100%, 2nd at 30%, 3rd at 20% of its stats, stacked together.
-- **Produce slot:** Carrot Soup on its own, full value.
-- **Drink slot:** the Stamina Mead — health/stamina from it feed your bars like any food, *and* because it's a Sweet-category drink it also grants the **Reveler's Draught** for as long as it holds the slot.
-- You now have **1 Meat + 1 Produce** on the board → **Balanced Diet** kicks in automatically, with its own countdown ticking on the icon.
-- Every one of those four foods also just counted toward its category's lifetime "Getting Fat" tally (and the overall Fatness tally) — permanently, whether or not you ever eat that exact meal again.
+**A worked meal.** You eat 3 Cooked Meat, a Carrot Soup and a Stamina Mead.
 
-That's the whole loop: eat → stack → qualify for buffs → get a little more permanent, forever, in the background.
+- The meat stacks in one slot as **×3** — 100%, then 30%, then 20% of its stats.
+- The soup takes its own slot at full value.
+- The mead takes the drink slot, feeds your bars like any food and, being a sweet drink, grants **Reveler's Draught**.
+- 1 Meat + 1 Produce is on the board, so **Balanced Diet** switches on, its countdown ticking.
+- All five just counted toward Getting Fat — for good.
 
----
-
-## ✨ Core Features
-
-### 🛑 No Food Decay
-Hate watching your health and stamina slowly tick down to nothing? **Fatty** disables vanilla food decay. When you eat, you keep **100% of a food's stats until its timer fully expires** — no gradual fade. *(Configurable — you can turn decay back on and keep the rest of the mod.)*
-
-### 🥞 Stat Stacking
-If you really love Lox Meat, why stop at one? Fatty lets you eat the **same food multiple times** to pile on stats.
-- By default you can stack a food up to **4 times**.
-- To keep it balanced, extra stacks give **diminishing returns** (configurable).
-- *Default:* 1st serving = 100%, 2nd = 30%, 3rd = 20%, 4th and beyond = 10%.
-- The HUD shows an **"×N" badge** so you always know how many times a food is stacked.
-
-### 🔍 The Feast Ledger
-
-A stacked slot's timer shows exactly when the **active item** empties (the most recently eaten copy - older copies are held in reserve and take over one at a time), and a thin segmented bar under each icon shows every individual item in the stack, dimming one at a time as each takes its turn.
-
-Click the small gold **▲ FEAST** tab, or press **F8** (rebindable in the config), to open The Feast Ledger: every stacked item's own remaining time, its position in the diminishing-returns ladder, its actual icon, and exactly how much HP/Stamina/Eitr it's contributing right now. A stack of the same food (e.g. "Tasty Mead ×4") collapses behind one line — click it to expand the individual items instead of repeating the food's name over and over. Inside the same panel, two more sections expand on click:
-- **Getting Fat** — your progress toward all six permanent milestone perks.
-- **Lifetime Feast Log** — every distinct food you've ever eaten on this character, and how many times, independent of what's currently in your stomach.
-
-The panel is **draggable** (grab the title bar), **resizable** (drag the corner grip), and framed in a full gilt picture frame — a polished double-rail gold border with mitred acanthus-flourish corners and a crest top and bottom, over a near-black leather panel. Text runs a couple of points larger than a typical Fatty panel by default; adjust or disable that in "10 - HUD Panels" → Feast Ledger Font Size Delta. It remembers where you left it, even across a full game restart.
-
-### 🍺 A 4th Food Slot + a 5th Drink Slot
-Vanilla only gives you **3** food slots. Fatty expands the food bar to **5**: a brand-new **4th solid-food slot** *plus* a dedicated **5th slot just for drinks** — so you can run 4 foods and a drink at once. Icons get a **gold trim** for a cleaner look.
-
-> Note: the drink slot covers **every** drink — including vanilla/modded meads that just grant a timed status effect with no food stats (Frost Resistance, Tasty Mead, etc.), not only drinks that carry food stats. A mead holds the slot for its own effect's duration or 20 minutes, whichever is longer, so a health mead's draught doesn't vanish a few seconds after you drink it. (That floor is 10 minutes scaled by the Food Duration Multiplier, which now ships at 2.0 — see below.)
->
-> Drinking is never **blocked**. If your drink slot is already busy, the mead still works exactly as it does in vanilla — it just doesn't get a Fatty drink buff. You can never be locked out of a health mead mid-fight.
->
-> Fatty also never lets you drink *more often* than vanilla does. The game's cooldown between meads is untouched — that's what stops potion spam, and Fatty has no business removing it. Tasty Mead is the single exception, because its effect does nothing at all; see Drunk below.
-
-### ⚡ Regen That Keeps Up With Your Bars
-Valheim regenerates stamina and eitr at a **flat rate** that completely ignores how big your bars are — so any mod that enlarges your pools secretly makes them refill *slower*. Fatty scales regeneration to match the pools it gives you, keeping refill times at vanilla parity no matter how much you stack. *(Configurable, and it will never make regen worse than vanilla.)*
-
-### 🍔 Getting Fat Is a Reward
-
-Fatty counts every food you eat, **per category**, for the lifetime of your character. Pass a threshold and you permanently gain a stat matched to that category's flavour — small awards, well spaced out, and capped so it stays sane. Meat, Sweet, Eitr, Fish and Fatness don't just grant more of the same thing three times over, either: **tier 2 swaps in a different permanent perk** before tier 3 goes back to the flat reward.
-
-| Category | Tier 1 & 3 | Tier 2 (the alternate) |
-| :--- | :--- | :--- |
-| 🥩 **Meat** | Carry weight | Sword & Axe skill |
-| 🍬 **Sweet** | Base stamina | Stamina regen |
-| 🔮 **Eitr** | Max eitr | Eitr regen |
-| 🐟 **Fish** | Swim speed | Reduced swim stamina cost |
-| 🥕 **Produce** (vegetables & fruit) | Health, stamina & eitr regen, all 3 tiers | *(no alternate - it's the regen category already)* |
-| 🍔 **Fatness** (total eaten, every category) | Base max health | Health regen |
-
-- Because the five diet counts are per category, a **varied diet** is what pays off — you can't just spam the cheapest berry to max out everything.
-- Each of those five runs its **own independent ladder**, and its own cap for the flat tiers. **Fatness** is separate again: it's your *total* food eaten across every category (including food Fatty couldn't identify), so it climbs faster and needs bigger thresholds — that's what grants max health now, not any single category.
-- Progress lives on your character, so it survives relogs and follows you between worlds.
-- *Default:* 50 / 200 / 500 of a single category earns its 3 tiers; 150 / 600 / 1500 total food eaten earns Fatness' 3 tiers. Every threshold, award and cap — including each tier-2 alternate's own amount — is configurable in "8 - Milestones".
-
-### 🥗 Dietary Synergies
-Eating the right combination of food categories triggers a unique, powerful **Status Effect** — complete with its own **custom icon** — applied and removed automatically as your diet changes:
-
-| Synergy | Recipe | Effect |
-| :--- | :--- | :--- |
-| **🟢 Balanced Diet** | 1 Meat + 1 Produce | Greatly increased Health & Stamina regen |
-| **🩷 Sugar Rush** | 3 Sweets + 1 Drink | Big movement-speed boost |
-| **🔵 Fisherman's Friend** | 2 Fish + 1 Produce | Improved swim speed & reduced swim stamina use |
-| **🟤 Lumberjack's Feast** | 3 Meat + 1 Drink | Bonus carry weight & woodcutting damage |
-
-Its status icon shows a **live countdown** to when your diet will actually stop qualifying — eat more of what's about to run out and the timer pushes back out. Banked stacks of the same food are counted **in sequence**, matching how they actually burn down, so the countdown reflects your real reserve rather than a single slot's timer.
-
-**⏳ Max Effect Duration.** Between the 2× food duration and four banked stacks, one activation could otherwise sit on you for well over an hour, so every food-driven Fatty effect — the four synergies, the four draughts and Drunk — is capped at **30 minutes by default** (*4 - Synergies*). When an effect hits the ceiling it ends even if your diet still qualifies, and it won't return until its recipe stops being met and is met again. Set it to **0** for no ceiling. Milestone perks are permanent progression and are never affected.
-
-### 🍻 Mead & Drink Buffs
-
-Vikings love their mead. Whatever sits in your **drink slot** now grants a buff for exactly as long as that drink lasts, chosen by **what the drink actually does** — an eitr mead gives the Arcane Draught, a stamina mead the Reveler's, a swimming mead the Seafarer's — rather than by guessing from its name:
-
-| Draught | Drink type | Effect |
-| :--- | :--- | :--- |
-| **🟣 Arcane Draught** | Eitr drinks | Improved eitr regen + Elemental & Blood Magic skill |
-| **🔴 Warrior's Draught** | Meat drinks | Improved Swords & Axes skill |
-| **🟠 Reveler's Draught** | Sweet drinks | Improved stamina regen + Run & Jump skill |
-| **🩵 Seafarer's Draught** | Fish drinks | Improved Swim & Fishing skill, faster swimming |
-
-Every drink buff **also grants bonus max health** that scales with how many stacks of that drink you commit — on the same diminishing-returns ladder as food.
-
-Every mead in the game grants *something*, including the resistance and repellent meads, so committing your one drink slot is never a wasted choice. Its status icon counts down to the moment your drink slot actually runs dry.
-
-### 🍯 Drunk
-
-**Fill your drink slot with Tasty Mead** (configurable) and you get **Drunk**. It's a real trade, not a freebie: you hit harder and are much harder to stagger, but your blocking skill craters and blocking burns far more stamina. Skal!
-
-Tasty Mead is the one drink you're allowed to knock back one after another, because unlike every other mead its effect does nothing — so letting you re-drink it costs the game nothing. Health, stamina and every other mead still respect the vanilla cooldown exactly as before.
-
-The requirement is capped by your **Max Food Stacks**, and ships set deliberately above it — so Drunk always means "a drink slot full of mead" rather than a fixed number that quietly gets easier the moment you raise your stack limit. At the defaults that's **4 Tasty Meads**.
-
-*Every synergy, draught and Drunk value is configurable and server-synced.*
+</details>
 
 ---
 
-## 🛠️ Configuration & Data-Driven Modding
+![IV](https://img.shields.io/badge/IV-MEAD_%26_DRUNKENNESS-8b1e1e?style=for-the-badge&labelColor=1b1b1b)
 
-### ⚙️ ServerSync
-Fatty is fully ServerSync integrated. Server admins have authority over **all gameplay values** — no-decay, max stacks, diminishing returns, regen scaling, food duration, milestones, and every synergy and drink buff. *(Only the personal debug-logging toggle stays local to each client.)*
+**Your drink picks your draught. A slot full of Tasty Mead picks a fight.**
 
-Config sections: **2 - Core**, **3 - Stacking**, **4 - Synergies**, **6 - Regen**, **7 - Duration**, **8 - Milestones**, **9 - Drink Buffs**.
+| In your drink slot | You get |
+|---|---|
+| **An eitr drink** | 🟣 **Arcane Draught** — eitr regen, Elemental and Blood Magic |
+| **A meat drink** | 🔴 **Warrior's Draught** — Swords and Axes |
+| **A sweet drink** | 🟠 **Reveler's Draught** — stamina regen, Run and Jump |
+| **A fish drink** | 🩵 **Seafarer's Draught** — Swim and Fishing, faster swimming |
+| **A slot full of Tasty Mead** | 🍯 **Drunk** — you hit harder and barely stagger, your guard falls apart, and the world starts to smear |
 
-Every numeric setting is **range-checked**, so a mistyped value — or one pushed by a server — is clamped instead of corrupting your health bar. Each description states its unit (multiplier vs. flat vs. fraction), what vanilla is, and what the default works out to.
+<details>
+<summary>📖 <b>Read the saga</b> — draughts, Drunk, and the blur</summary>
 
-### 🔧 Something in the wrong category?
-Set **`Rebuild Food Data = true`** in *2 - Core* and launch once. Fatty backs up your `Fatty_FoodData.json` to `.bak`, re-sorts every food from scratch, and turns the switch back off. Use this whenever a food is filed wrong — no need to delete files by hand.
+**The draught is chosen by what the drink does**, not guessed from its name: an eitr mead gives Arcane, a stamina mead Reveler's, a swimming mead Seafarer's. Every mead grants something — the resistance and repellent meads included — so your one drink slot is never wasted. Each draught also adds **bonus max health** that grows with the stacks you commit, on the same diminishing ladder as food, and its icon counts down to the moment the slot runs dry.
 
-### ⏱️ Food Duration
+**Drunk is a trade, not a freebie.** You deal more damage and are far harder to stagger, but your blocking skill craters and blocking burns much more stamina. Skål! Tasty Mead is the one drink you can knock back one after another, because its own effect does nothing — letting you re-drink it costs the game nothing. It takes a drink slot full of mead, four at the default stack limit, and the requirement follows `Max Food Stacks`, so raising the limit never makes Drunk cheaper.
 
-Fatty has its own **Food Duration Multiplier** (section *7 - Duration*) — it ships at **2.0**, so food lasts twice as long as vanilla out of the box. Set it to 1.0 for vanilla timings, or higher for longer still. No extra mod required.
+**The room swims.** While you are Drunk the screen takes on heavy motion blur with ghosting trails, fading in as you get drunk and out as you sober up. It works even with Motion Blur switched off in Valheim's graphics settings, and puts your own setting back afterwards. `Drunk Blur Strength` sets how hard it hits; `Drunk Motion Blur` turns it off.
 
-If you *do* have **blacks7ar's FoodDurationMultiplier** installed, Fatty detects it and **defers to that mod's value entirely** rather than multiplying the two together — so running both can never silently double up on you. Fatty also reads that mod's **Health / Stamina / Eitr Benefits** sliders and applies them itself, so your settings there keep working.
+</details>
 
-### 🤝 Food-Mod Compatibility
-Fatty is built to play nicely with **any** food mod:
-- **Automatic, open support:** Fatty scans every food in the game — from the base game or *any* mod — and sorts each one into a category. New foods just work.
-- **Eitr food is identified by its stats, not its name.** "Mushroom Omelette" is mage food, not produce, and Fatty files it accordingly.
-- **Valheim Cuisine:** specifically recognized. Fatty pre-sorts its meats, fish, sweets and drinks out of the box using Valheim Cuisine's own recipe ingredients as ground truth — not guessing from the name.
-- **Full manual control:** anything the auto-sorter gets wrong, you fix in one JSON file (below).
+---
 
-### 🏷️ Food Categories
+![V](https://img.shields.io/badge/V-GETTING_FAT-c9a227?style=for-the-badge&labelColor=1b1b1b)
 
-Every food has a **category** (its diet) and, separately, a flag for whether it **takes the drink slot**. Keeping those apart means an eitr mead can count as mage food for synergies *while still* being a drink.
+**Every meal counts, forever — and a varied diet counts most.**
+
+| Eat a lot of… | Tiers 1 and 3 | Tier 2 |
+|---|---|---|
+| 🥩 **Meat** | carry weight | Swords and Axes skill |
+| 🍬 **Sweet** | base stamina | stamina regen |
+| 🔮 **Eitr** | max eitr | eitr regen |
+| 🐟 **Fish** | swim speed | cheaper swimming |
+| 🥕 **Produce** — vegetables and fruit | health, stamina and eitr regen | *(regen on every tier)* |
+| 🍔 **Everything** — your Fatness | base max health | health regen |
+
+<details>
+<summary>📖 <b>Read the saga</b> — tiers, Fatness, and why nothing is ever lost</summary>
+
+Fatty counts every food you eat, by category, for the life of your character. Cross a threshold and a small, permanent bonus matched to that food's flavour is yours — not tied to what is in your stomach, and never lost, even if you starve. By default a category's three tiers come at **50, 200 and 500** eaten.
+
+**Each category climbs its own ladder**, so spamming the cheapest berry maxes nothing. The flat rewards are capped so it stays sane, and tier 2 swaps in a different perk before tier 3 returns to the flat one.
+
+**Fatness is everything you have ever eaten**, every category together, food Fatty couldn't identify included. It climbs faster, so its tiers come at **150, 600 and 1,500** — and it is what raises your max health.
+
+**Your progress lives on your character**, so it survives relogs and follows you between worlds. Turning milestones off removes the bonuses but keeps the tally, so switching them back on picks up exactly where you left off. When Fatty's sorting improves and a food moves to a better category, what you have already eaten of it moves too — no progress is stranded. And the Puke button never takes any of it back.
+
+Check it any time in the **Getting Fat** section of The Feast Ledger.
+
+</details>
+
+---
+
+![VI](https://img.shields.io/badge/VI-ANY_FOOD_MOD-2e5e3a?style=for-the-badge&labelColor=1b1b1b)
+
+**Every food in the game sorted — from any mod — with no list to keep up.**
+
+| | |
+|---|---|
+| 🔎 **Automatic** | every food from the base game or any mod is scanned and given a category; new foods just work |
+| 🔮 **Mage food by its stats** | a food is Eitr when its eitr outweighs its health or its stamina — Mushroom Omelette is mage food, whatever its name says |
+| 🍲 **Valheim Cuisine** | pre-sorted from its own recipe ingredients, not guessed from names |
+| 🫐 **Produce is vegetables and fruit** | raw berries are Produce; a berry *pie* is Sweet |
+| 🍺 **Drinks by name** | mead, ale, tea, brew, smoothie, wine… — potions and scrolls are never mistaken for drinks |
+| 📁 **Your word is final** | anything filed wrong, you fix in one JSON file |
+
+<details>
+<summary>📖 <b>Read the saga</b> — the six categories and the data file</summary>
+
+Every food has a **category** — its diet — and, separately, a flag for whether it **takes the drink slot**. Keeping them apart lets an eitr mead count as mage food for synergies while still being a drink.
 
 | Category | What it is |
-| :--- | :--- |
-| **Meat** / **Fish** / **Produce** / **Sweet** | The classic four. **Produce** covers vegetables *and* fruit — raw berries are produce, while a berry *pie* is Sweet |
-| **Eitr** | Mage food — anything whose eitr outweighs its health or its stamina |
-| **Unknown** | Fatty couldn't identify it. Always treated as **food, never a drink**, so it can never steal your drink slot |
+|---|---|
+| **Meat · Fish · Produce · Sweet** | the classic four |
+| **Eitr** | mage food |
+| **Unknown** | Fatty couldn't tell. Always food, never a drink, so it can't steal your drink slot. It feeds Fatness but earns no category tier |
 
-The drink flag is set from the item's **name** (mead, ale, tea, brew, smoothie, wine…), so potions, scrolls and boss-power items are never mistaken for drinks. Anything the name test misses is one `IsDrink` edit away in the JSON below.
+The first time it runs, Fatty writes every food's real stats, category and drink flag to `BepInEx/config/Fatty_FoodData.json`. After that it rewrites the file only when it finds **new** foods — after you add a food mod, say — so your hand edits are kept.
 
-### 📁 The JSON Data File
-The **first** time you run Fatty, it writes every food's real stats, category and drink flag to `BepInEx/config/Fatty_FoodData.json`. After that it **only rewrites the file when it discovers new foods** (for example, after you add another food mod) — so a normal launch never touches it and **your manual edits are preserved**.
-
-**Want to change a food's category?** Edit that JSON file — set any food to `Meat`, `Produce`, `Sweet`, `Fish`, `Eitr` or `Unknown`, and set `IsDrink` to control whether it uses the drink slot. Fatty will respect it.
+</details>
 
 ---
 
-## 🧩 Dependencies
-Fatty needs just two things at runtime — **Gale** installs them automatically:
+![VII](https://img.shields.io/badge/VII-THE_FEAST_RECORDS-1f4e79?style=for-the-badge&labelColor=1b1b1b)
 
-| Dependency | Why |
-| :--- | :--- |
-| **[BepInExPack Valheim](https://valheim.thunderstore.io/package/denikson/BepInExPack_Valheim/)** | The mod loader (also provides HarmonyX). |
-| **[JsonDotNET](https://valheim.thunderstore.io/package/ValheimModding/JsonDotNET/)** | Newtonsoft.Json, used to read/write `Fatty_FoodData.json`. |
+**Who is the biggest glutton on the server? Now a Discord bot can tell you.**
 
-*(ServerSync is compiled into Fatty and needs no separate download.)*
+| | |
+|---|---|
+| 📊 **One file on the server** | everyone's lifetime food counts for a Discord bot or web dashboard — favourite food, most Serpent Stew, biggest glutton |
+| 🔒 **Off by default** | off means nothing is collected, nothing is sent, and no file exists |
+| 📜 **History counts** | a player's whole Lifetime Feast Log arrives the first time they play there; nobody starts from zero |
+| 🚪 **Logging off keeps your place** | records survive relogs and server restarts |
+| ⚡ **No restart** | only the server's `Enable Feast Export` matters, and it takes effect at once |
 
-## 📥 Installation
-**With Gale (recommended):** just install Fatty — the dependencies above are pulled in for you.
+<details>
+<summary>📖 <b>Read the saga</b> — what gets sent, and why the server asks</summary>
 
-**Manual install:**
-1. Install **BepInExPack Valheim** and **JsonDotNET**.
-2. Drop `Fatty.dll` into `BepInEx/plugins`.
-3. Eat up! 
+**For players:** nothing to install and nothing to switch on. This is the only part of Fatty that sends anything anywhere, and what it sends is exactly what your own Lifetime Feast Log shows you — food names and counts, nothing else — to the server you are playing on, every five minutes, and only when that server asks.
 
-<div align="center">
-  <i>Created with ❤️ by Wubarrk with design input and testing by Jaga</i>
-</div>
+**Why the server asks.** Your food history lives in your own character file on your own machine, and a dedicated server has no players of its own to read it from. So the server asks each player for a snapshot and their game answers. The direction matters: the server owns the switch, so off means it never asks, and no player's setting can disagree with it. A player on an older Fatty simply doesn't answer, and shows up with no record rather than breaking anything.
+
+The file format is in the Toolbox below.
+
+</details>
 
 ---
-join the Mists of Avalor Open BETA find it only on [Hexium](https://valheim.hexium.gg/mods/Wubarrk/Mists_of_Avalor_BETA)
-<br>
-<small>
 
-**License to Modify:**
-User may alter, translate, or create derivative works based on the original material, provided two conditions are met: 1) A request to alter the work is made and approved by the original author (waived in the case of simple translations), and 2) Full attribution is given to the original author along with a link to the original work (if still available).  All changes should be clearly marked or noted as modified from the original source.
+![THE TOOLBOX](https://img.shields.io/badge/THE_TOOLBOX-QUICK_START_%C2%B7_KEYS_%C2%B7_HOW--TO-1b1b1b?style=for-the-badge&labelColor=8b1e1e)
 
-Modification or reuse of the work does not grant the user any right to imply official endorsement or sponsorship by the original creator.
+**First ten minutes:** install with your mod manager → eat a Cooked Meat and a Carrot Soup and watch **Balanced Diet** appear → eat two more Cooked Meat and see **×3** on the slot → press **F8** and click the stack → drink a mead and meet its draught → open **Getting Fat**.
 
-The permission granted herein is non-exclusive, and the original creator retains all rights, title, and interest in the original work.
+| Key | | Setting | |
+|---|---|---|---|
+| **F8** | The Feast Ledger | `Rebuild Food Data` | re-sort every food, once |
+| **▲ FEAST** | The Feast Ledger — drag the tab anywhere | `Food Duration Multiplier` | 1.0 for vanilla food timers |
+| **Puke**, twice | empty your stomach | `Enable Feast Export` | the server's feast records |
+| | | `Enable Debug Mode` | log how each food was sorted |
 
-</small>
+<details>
+<summary>🔧 <b>Fix a food in the wrong category</b></summary>
+
+**Let Fatty re-sort everything:** set `Rebuild Food Data` to true in *2 - Core* and launch once. Fatty backs up `Fatty_FoodData.json` to `Fatty_FoodData.json.bak`, sorts every food from scratch, and switches the setting back off. Hand edits are overwritten — copy them back from the `.bak`.
+
+**Or fix one food by hand:** open `BepInEx/config/Fatty_FoodData.json`, find the food by its prefab name, set its category to `Meat`, `Fish`, `Produce`, `Sweet`, `Eitr` or `Unknown`, and set `IsDrink` to decide whether it takes the drink slot. Fatty respects it from the next launch.
+
+</details>
+
+<details>
+<summary>📊 <b>Read the feast records from a bot</b> — for server admins and bot authors</summary>
+
+Turn on `Enable Feast Export` in *11 - Feast Export* on the **server**. Two settings beside it set the pace: `Feast Export Interval Seconds` (how often the file is rewritten — every minute by default) and `Feast Sync Interval Seconds` (how often each player is asked for fresh counts — every five minutes; a player who has just joined is asked straight away).
+
+Two things are written under `BepInEx/config/Fatty/`:
+
+- **`BarrkBOT_feasts.json`** — the whole server in one file. **Read this one.**
+- **`feasts/<player>.json`** — one file per player, so a bad write costs one player rather than the server's whole history. Bots should ignore these: the main file has the same fields, and one read beats thirty-five.
+
+**This file is an interface.** A program on another machine reads it and has no way to notice a renamed field, so fields are added, never renamed. `source` is Fatty's name and version.
+
+```json
+{
+  "generated_at": "2026-08-22T06:12:44.0000000Z",
+  "source": "Fatty <version>",
+  "players": {
+    "Fatty": {
+      "name": "Fatty",
+      "player_id": 1234567890123,
+      "last_updated": "2026-08-22T06:12:40.0000000Z",
+      "total_meals": 261,
+      "distinct_foods": 3,
+      "favourite_food": "CookedMeat",
+      "food_counts":     { "CookedMeat": 143, "Sausages": 30, "Cloudberry": 88 },
+      "category_counts": { "Meat": 173, "Produce": 88 }
+    }
+  }
+}
+```
+
+**What a reader can rely on:**
+
+- **`favourite_food` is `null` on a tie, and `null` when `total_meals` is 0.** Never an arbitrary pick and never a placeholder string — silently choosing one of a tie invents a fact.
+- **`food_counts` keys are raw prefab names** (`CookedMeat`, not "Cooked Meat"). Make them readable at your end; two different prettifiers drift apart.
+- **`total_meals` and `distinct_foods` are given, not derived.** Don't recompute them — a number both sides calculate is a number that eventually disagrees.
+- **A player missing from `players` has never been seen.** That is not the same as having eaten nothing, and a leaderboard that mixes the two tells someone they've never eaten. Offline players are never dropped.
+- **Counts are absolute lifetime totals, never deltas.** They self-correct after a dropped message, and they jump on a player's first sync after updating — that's their back history arriving. Don't diff two files for "meals since yesterday".
+- **Written atomically** (a temp file, then renamed over the old one), so a reader never catches a half-written file — and **with no byte-order mark**, so any standard JSON parser reads it.
+- **`category_counts` uses Fatty's six categories.** It says **`Produce`** (vegetables and fruit), not the old `Vegetable` — don't hardcode the old name.
+
+</details>
+
+---
+
+![MULTIPLAYER](https://img.shields.io/badge/MULTIPLAYER-YOUR_STOMACH_%C2%B7_THE_SERVER%27S_RULES-1f4e79?style=for-the-badge&labelColor=1b1b1b)
+
+| Works with vanilla players and servers | Needs Fatty on the server | Needs Fatty on both ends |
+|---|---|---|
+| everything you eat — slots, stacking, synergies, draughts, Drunk, Getting Fat, The Feast Ledger, Puke | the server's gameplay settings replace yours, the Puke switch included; `Lock Configuration` keeps them admin-only | the feast records — the server asks, your game answers |
+
+> ⚠️ **Versions must match.** A server running Fatty accepts only the same version. Update the server and its players together. Single player and vanilla servers do not care.
+
+---
+
+![COMPATIBILITY](https://img.shields.io/badge/COMPATIBILITY-EATS_WELL_WITH_OTHERS-2e5e3a?style=for-the-badge&labelColor=1b1b1b)
+
+| Mod | |
+|---|---|
+| **blacks7ar's FoodDurationMultiplier** | Fatty uses its duration instead of its own — never both multiplied together — and applies its Health, Stamina and Eitr Benefits sliders itself, so they keep working. |
+| **Valheim Cuisine** | Recognised: its meats, fish, sweets and drinks are pre-sorted from its own recipe ingredients. |
+| **Any other food mod** | Scanned and sorted automatically. Anything filed wrong is one JSON edit away. |
+| **VikingOS** | The Feast Ledger wears the same gilt frame as VikingOS's windows. |
+
+---
+
+![SETTINGS](https://img.shields.io/badge/SETTINGS-F1_IN_GAME-b8860b?style=for-the-badge&labelColor=1b1b1b)
+
+All safe to leave alone. **Configuration Manager** (`F1`) in game, or `BepInEx/config/wubarrk.fatty.cfg`.
+
+<details>
+<summary>🔒 <b>Server-synced</b> — set on the server, applied to everyone</summary>
+
+| Section | Setting | What it does |
+|---|---|---|
+| 1 - General | `Lock Configuration` | only admins change synced settings |
+| 2 - Core | `No Food Decay` | full stats until the timer ends; off = vanilla's fade |
+| 2 - Core | `Max Food Stacks` | copies of one food a slot can hold |
+| 2 - Core | `Allow Puke Button` | the Puke button in The Feast Ledger |
+| 3 - Stacking | `Stack 2 Multiplier` · `Stack 3 Multiplier` · `Stack 4+ Multiplier` | what each extra copy is worth |
+| 4 - Synergies | `Enable Synergies` | the four diet buffs |
+| 4 - Synergies | `Max Effect Duration` | the ceiling on one activation, in minutes; 0 = none |
+| 4 - Synergies | `Balanced Diet Regen Multiplier` · `Sugar Rush Speed Multiplier` · `Fisherman Swim Stamina Reduction` · `Lumberjack Carry Weight Bonus` · `Lumberjack Woodcutting Damage` | how strong each buff is |
+| 6 - Regen | `Scale Regen With Pool` · `Max Regen Scale` | stamina and eitr refill keeps pace with bigger bars, up to a cap |
+| 7 - Duration | `Food Duration Multiplier` | how long food lasts; 1.0 = vanilla |
+| 8 - Milestones | `Enable Milestones` | Getting Fat's rewards — the tally always runs |
+| 8 - Milestones | `Tier 1 Count` · `Tier 2 Count` · `Tier 3 Count` | meals of one category per tier |
+| 8 - Milestones | `Fatness Tier 1 Count` · `Fatness Tier 2 Count` · `Fatness Tier 3 Count` · `Fatness Tier 1 Health` · `Fatness Tier 2 Health Regen` · `Fatness Tier 3 Health` · `Fatness Health Cap` | Fatness |
+| 8 - Milestones | `Meat Tier 1 Carry Weight` · `Meat Tier 2 Skill Bonus` · `Meat Tier 3 Carry Weight` · `Meat Carry Weight Cap` | Meat |
+| 8 - Milestones | `Sweet Tier 1 Stamina` · `Sweet Tier 2 Stamina Regen` · `Sweet Tier 3 Stamina` · `Sweet Stamina Cap` | Sweet |
+| 8 - Milestones | `Eitr Tier 1 Eitr` · `Eitr Tier 2 Eitr Regen` · `Eitr Tier 3 Eitr` · `Eitr Eitr Cap` | Eitr |
+| 8 - Milestones | `Fish Tier 1 Swim Speed` · `Fish Tier 2 Swim Stamina Reduction` · `Fish Tier 3 Swim Speed` | Fish |
+| 8 - Milestones | `Produce Tier 1 Regen Multiplier` · `Produce Tier 2 Regen Multiplier` · `Produce Tier 3 Regen Multiplier` | Produce |
+| 9 - Drink Buffs | `Enable Drink Buffs` | the four draughts |
+| 9 - Drink Buffs | `Skill Level Bonus` · `Arcane Eitr Regen Multiplier` · `Reveler Stamina Regen Multiplier` · `Max Health Per Drink` | how strong each draught is |
+| 9 - Drink Buffs | `Default Drink Duration` | the least time a drink holds the slot |
+| 9 - Drink Buffs | `Enable Drunk` · `Drunk Stacks Required` | Drunk, and how many Tasty Meads it takes |
+| 9 - Drink Buffs | `Drunk Damage Bonus` · `Drunk Stagger Resistance` · `Drunk Blocking Penalty` · `Drunk Block Stamina Penalty` | Drunk's trade |
+| 11 - Feast Export | `Enable Feast Export` | the server's feast records — off by default |
+| 11 - Feast Export | `Feast Export Interval Seconds` · `Feast Sync Interval Seconds` | how often the file is written · how often players are asked |
+
+</details>
+
+<details>
+<summary>🖥️ <b>Local to your game</b> — yours alone</summary>
+
+| Section | Settings |
+|---|---|
+| **2 - Core** | `Rebuild Food Data` — runs once, then switches itself off |
+| **5 - Debug** | `Enable Debug Mode` |
+| **10 - HUD Panels** | `Breakdown Panel Hotkey` · `Feast Ledger Font Size Delta` · `Use Segmented Stack Bar` · `Food Breakdown Panel X` · `Food Breakdown Panel Y` · `Food Breakdown Panel Width` · `Food Breakdown Panel Height` — the last four are set by dragging |
+| **12 - Effects** | `Drunk Motion Blur` · `Drunk Blur Strength` |
+
+</details>
+
+---
+
+![CREDITS](https://img.shields.io/badge/CREDITS-THANK_YOU-1b1b1b?style=for-the-badge&labelColor=c9a227)
+
+**Needs:** [BepInExPack Valheim](https://valheim.thunderstore.io/package/denikson/BepInExPack_Valheim/) · [JsonDotNET](https://valheim.thunderstore.io/package/ValheimModding/JsonDotNET/) — your mod manager installs both. ServerSync is built in; there is nothing else to download. **Design input and testing** by Jaga.
+
+> 🔗 Also by me: **VikingOS**, which rebuilds Valheim's interface; **TortalPortal**, a complete overhaul of Valheim's portal network; and **Mists of Avalor**, in open beta on [Hexium](https://valheim.hexium.gg/mods/Wubarrk/Mists_of_Avalor_BETA).
+
+*Made by Wubarrk. Bug reports and abuse welcome on [Discord](https://discord.com/invite/GTTCnGS6Ym).* **License:** MIT — use, change and share it freely, commercially too; just keep the copyright notice. Full text in `LICENSE.md`.

@@ -153,6 +153,67 @@ public contract) and removes the orphan so the dead line stops being rewritten. 
 way in: the old entry's `AcceptableValueRange` died with it, so this is the one path into a value
 that bind-time validation doesn't cover. Add a `TryMigrateKey` line for **every** future key rename.
 
+## Feast export: the server asks, the client answers (1.1.11)
+
+`Progression/FeastRegistry.cs` + `Patches/FeastExportPatches.cs` write
+`BepInEx/config/Fatty/BarrkBOT_feasts.json` for BarrkBOT. **That file is an interface with a program
+on another machine** — see `PAUSED/TheRavensCall-OLD-1.2.1/BARRKBOT_CONTRACT.md` before renaming any field, and
+prefer adding over renaming: a new field costs the reader nothing, a renamed one silently zeroes a
+feature and nothing anywhere reports an error.
+
+**A dedicated server cannot read `m_customData`, and no probe is needed to know it.** `Player`
+objects do not exist headless at all (`Player.GetAllPlayers()` walks the local instance list), so
+`FoodLifetimeLog` is unreachable server-side for any remote player. This is architecture, not a sync
+delay. `FEAST_EXPORT.md` §2 originally proposed probing for it; the probe as written would have
+returned a clean-looking negative for the wrong reason.
+
+**The server PULLS; the client never pushes on its own.** This is the load-bearing inversion, and it
+is not a style choice. A client-driven push has to read the ServerSync'd `Enable Feast Export` to
+decide whether to send, and reading a synced value early in a session is a race the client usually
+loses (`libs-Tools/PLAYER-IDENTITY-FACTS.md`, checklist 5). With the server asking, the switch lives
+on the only machine that reads it: off means it never asks, so there is no traffic, no directory and
+no file, and there is no client-side gate that can disagree with the server. It follows that handler
+**registration** cannot be gated on the setting either — a handler is an inert dictionary entry, and
+gating it would both re-introduce the race on clients and freeze the setting at world load on the
+server. Read the config **live** in the tick; an admin toggling it should not need a restart.
+
+**Absolute snapshots, never deltas.** A delta stream starts every player at zero, can never recover
+history from before the feature shipped, and drifts permanently from one dropped message. `Merge`
+therefore *assigns* rather than accumulates — which is also what makes a replayed or duplicated
+message harmless, and what makes retroactive backfill free rather than a migration.
+
+**Identity comes from the sender, never the payload.** The client sends counts only. The server
+resolves the name and `s_playerID` from the routed-RPC `sender` → `ZNet.GetPeer` → the character ZDO.
+A modded client can lie about its own diet; it cannot become a different connected peer. `m_characterID`
+arrives *after* the peer is otherwise ready, so a snapshot can land before the name resolves — drop
+and retry, never record under `"Stranger"` or `"..."` (a placeholder written down reads as an answer).
+
+**`Encoding.UTF8` writes a BOM, and a BOM is not valid JSON.** `File.ReadAllText` silently tolerates
+one, which is exactly why it survives being written and is only noticed by somebody else's parser —
+`json.load` and `jq` both reject the file outright. Every writer here uses
+`new UTF8Encoding(false)`. Same rule for any future export.
+
+Two more that cost nothing but are easy to get wrong: `ZRoutedRpc.Everybody` is capital-E, is `0L`,
+and means *every peer plus the sender locally* — for server-directed traffic use
+`InvokeRoutedRPC(name, args)` with **no** peer id, which auto-targets the server. And RPC names share
+one global hash namespace with the base game and every mod, so they are GUID-prefixed; registration
+is `Dictionary.Add` on a `ZRoutedRpc` instance replaced on every `ZNet.Awake`, so it is keyed on the
+**instance reference** — a stale `_registered` bool leaves the next world with no handlers at all.
+
+Test it the way `FoodWordClassifier` is tested: `FeastRegistry.cs` and `CountsCodec.cs` compile in a
+throwaway `net8.0` csproj against ~20 lines of stub for `BepInEx.Paths` and `FattyPlugin.Log`. The
+BOM defect above was found that way and would not have been found any other way — "it built" says
+nothing about whether the emitted file is correct, and the reader is another program.
+
+## The Feast Ledger closes with the inventory (1.1.11)
+
+`CollapseWhenGameResumes()` triggers on the **falling edge** of `InventoryGui.IsVisible() ||
+Menu.IsVisible()`, not on the state. Testing the state directly is wrong in both directions: it slams
+the panel shut on the first pass after an F8 open (F8 is only accepted while no menu is up — see
+`HudPatches.CanAcceptHotkey`), and it then re-closes every frame so the pill can never reopen it.
+Only the OPEN panel collapses; the closed pill is the toggle and the only way back in, so hiding it
+would strand the panel exactly the way 1.1.10's clamp fix existed to prevent.
+
 ## Feast Ledger audit fixes (2026-08-04)
 
 Three issues found auditing BarrkUI, which had inherited `FeastLedgerGui.cs`'s pattern verbatim from
@@ -213,3 +274,28 @@ collapsed state whose drawn size differs from its stored rect.** Check it before
 
 `libs-Tools/IMPLEMENTATIONS/SharedInfrastructure.md` has the `GiltFrameTheme` consumer-conflict note
 (relevant if Fatty ever migrates off its local copy of the theme onto the shared one).
+
+## Puke button and drunk blur (1.2.0)
+
+**The Puke button must never strip a drink's vanilla status effect.** Every vanilla mead's SE
+carries the shared `Mead` category, and `CanConsumeItem` refusing on that category *is* the game's
+potion cooldown. Removing those SEs on puke turns the button into drink → puke → drink unlimited
+healing. `PukeAction` clears `m_foods` and forces `UpdateFood(0, true)`, nothing else; Fatty's own
+synergies/draughts/Drunk are re-derived from the stomach on that tick and end by themselves.
+
+`PukeAction` borrows the start effects off the `Pukeberries` item's `m_consumeStatusEffect` rather
+than naming `fx_Puke`/`sfx_Puke_*` (which keeps the male/female variant right). No SE is alive to run
+`RemoveStartEffects`, so it destroys the instances itself after the SE's `m_ttl` (clamped 2–6 s), via
+`ZNetView.Destroy` because `fx_Puke` is networked.
+
+`DrunkVision` edits the camera's shared `PostProcessingProfile.motionBlur` in place, exactly as
+vanilla's `CameraEffects.SetMotionBlur` does. Same compounding trap as the pristine stats above:
+**capture the original settings only while not overriding**, or a mid-override capture reads back the
+drunk values and sobering up leaves them on for good. Restore `enabled` from
+`GraphicsSettingsManager.Instance.ActiveSettings.m_motionBlur`, not the captured bool: the player may
+have flipped Motion Blur in the menu while drunk.
+
+`thewall-share` (the sshfs mount this repo lives on) intermittently returns **EPERM on open** while
+`stat` still works. Unconfirmed cause: the remote shell's `ulimit -n` is 1024 and sshfs maps a
+generic SFTP failure to EPERM, so handle exhaustion fits. Seen 2026-11-16; it cleared by itself. Retry, or copy reference files to local
+scratch first; it is not a permissions change.

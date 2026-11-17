@@ -1,10 +1,10 @@
 {
   "name": "Fatty",
-  "version_number": "1.1.10",
-  "website_url": "https://discord.gg/GTTCnGS6Ym",
+  "version_number": "1.2.0",
+  "website_url": "https://www.rossgilsonlabs.dev",
   "description": "Overhaul Valheim's food system: no more stat decay, a bigger food bar (4 food + 1 drink slot), stack the same food for extra stats, and diet-based synergy buffs with custom icons. Works with any food mod, including Valheim Cuisine.",
   "dependencies": [
-    "denikson-BepInExPack_Valheim-5.4.2333",
+    "denikson-BepInExPack_Valheim-5.4.2360",
     "ValheimModding-JsonDotNET-13.0.4"
   ]
 }
