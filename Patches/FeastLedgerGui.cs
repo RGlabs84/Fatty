@@ -44,6 +44,10 @@ namespace Fatty.Patches
 
         private static bool _initialized;
         private static bool _open;
+
+        // Tracks whether the game was showing a cursor-freeing menu on the previous pass, so the
+        // panel can be collapsed on the FALLING edge of that state - see CollapseWhenGameResumes.
+        private static bool _menuWasOpen;
         private static Rect _rect;
 
         // Window position is committed to config on drag RELEASE, not per frame - see CommitPositionIfSettled.
@@ -68,6 +72,8 @@ namespace Fatty.Patches
         private static GUIStyle _windowStyle;
         private static GUIStyle _closedPillStyle;
         private static GUIStyle _toggleBtnStyle;
+        private static GUIStyle _pukeBtnStyle;
+        private static GUIStyle _pukeArmedStyle;
         private static GUIStyle _foldoutStyle;
         private static GUIStyle _smallLabelStyle;
         private static GUIStyle _feastLogStyle;
@@ -83,6 +89,37 @@ namespace Fatty.Patches
         // Called from HudPatches.Hud_UpdateFood_Prefix's F8-hotkey poll and, once styles exist, from
         // the toggle button drawn in the title bar itself - the click path this whole file exists to
         // make reliable again.
+        // Collapses the open panel the moment the game returns to play, so it behaves like every
+        // other window Valheim puts on screen instead of being the one thing left hanging over the
+        // world after ESC or the inventory closes.
+        //
+        // The trigger is the FALLING EDGE of "a cursor-freeing menu is up", not the state itself.
+        // Testing the state directly would be wrong in both directions: it would slam the panel shut
+        // on the very first pass after an F8 open (F8 is only accepted while no menu is up - see
+        // HudPatches.CanAcceptHotkey), and it would re-close it every frame afterwards, so the pill
+        // could never reopen. Latching the previous value means this fires exactly once per close.
+        //
+        // Only the OPEN panel is collapsed. The closed pill is the toggle itself and stays put; it is
+        // the only way back in, and hiding it would strand the panel with no in-game recovery - the
+        // same failure mode 1.1.10's clamp fix existed to remove.
+        //
+        // Deliberately NOT limited to panels that were opened by clicking the pill. A panel opened
+        // with F8 closes on the next menu cycle too: one rule is predictable, whereas "it depends how
+        // you opened it" is the kind of state nobody can hold in their head while playing.
+        //
+        // Runs after Draw()'s null-player guard, so it is never reached on a dedicated server where
+        // InventoryGui and Menu have no instance.
+        private static void CollapseWhenGameResumes()
+        {
+            // Both are the same test vanilla itself uses to decide whether the pointer is free, and
+            // they are the only two states in which this panel can be clicked at all.
+            bool menuOpen = InventoryGui.IsVisible() || Menu.IsVisible();
+
+            if (_menuWasOpen && !menuOpen) _open = false;
+
+            _menuWasOpen = menuOpen;
+        }
+
         internal static void Toggle()
         {
             EnsureInit();
@@ -96,6 +133,8 @@ namespace Fatty.Patches
 
             EnsureInit();
             EnsureStyles();
+
+            CollapseWhenGameResumes();
 
             // Fatty lays every rect out in raw screen pixels, so it needs the identity transform - and
             // in a loaded profile it does not get one. Measured in game from a real session (2560x1440):
@@ -432,7 +471,21 @@ namespace Fatty.Patches
         // printing the same food name N times.
         private static void DrawStomachSection()
         {
+            // Header row doubles as the Puke button's home: right-aligned on the first line of the
+            // section it acts on, so it is in view without scrolling and impossible to mistake for
+            // something that touches the milestones or the log below.
+            GUILayout.BeginHorizontal();
             GUILayout.Label("Stomach", GiltFrameTheme.Header);
+            if (PukeAction.Enabled && HudPatches.GroupCount > 0)
+            {
+                GUILayout.FlexibleSpace();
+                // Two clicks, not one: this throws away every slot at once and there is no undo. The
+                // armed label is the whole confirmation UI - no modal, nothing to dismiss.
+                bool armed = PukeAction.Armed;
+                if (GUILayout.Button(armed ? "Really? Click again" : "Puke", armed ? _pukeArmedStyle : _pukeBtnStyle))
+                    PukeAction.Click();
+            }
+            GUILayout.EndHorizontal();
 
             if (HudPatches.GroupCount == 0)
             {
@@ -737,6 +790,19 @@ namespace Fatty.Patches
             };
             _toggleBtnStyle.normal.textColor = GiltFrameTheme.Gold;
             _toggleBtnStyle.hover.textColor = GiltFrameTheme.GoldBright;
+
+            // Puke: a real button (it is the one destructive control in the panel, so it should look
+            // pressable rather than like a foldout), in a sickly green that turns blood-red once armed.
+            _pukeBtnStyle = new GUIStyle(_toggleBtnStyle)
+            {
+                fontSize = Mathf.Max(6, GiltFrameTheme.Value.fontSize),
+                padding = new RectOffset(10, 10, 3, 3)
+            };
+            _pukeBtnStyle.normal.textColor = new Color(0.62f, 0.78f, 0.36f);
+            _pukeBtnStyle.hover.textColor = new Color(0.78f, 0.95f, 0.45f);
+            _pukeArmedStyle = new GUIStyle(_pukeBtnStyle);
+            _pukeArmedStyle.normal.textColor = new Color(0.95f, 0.35f, 0.30f);
+            _pukeArmedStyle.hover.textColor = new Color(1f, 0.5f, 0.42f);
 
             // A clickable row that reads like plain text, not a button - no background in any state.
             _foldoutStyle = new GUIStyle(GiltFrameTheme.Header)

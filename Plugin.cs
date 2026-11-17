@@ -8,7 +8,7 @@ namespace Fatty
     {
         public const string PluginGUID = "wubarrk.fatty";
         public const string PluginName = "Fatty";
-        public const string PluginVersion = "1.1.10";
+        public const string PluginVersion = "1.2.0";
 
         private readonly Harmony _harmony = new Harmony(PluginGUID);
 
@@ -38,6 +38,32 @@ namespace Fatty
             _harmony.PatchAll();
 
             Log.LogInfo($"{PluginName} v{PluginVersion} loaded successfully! Time to get fat.");
+        }
+
+        // Drunk's screen blur eases in and out over several seconds, so it needs a per-frame tick
+        // that keeps running after the status effect itself has gone.
+        // Latched off on the first exception: this runs every frame, so an unlatched failure would
+        // write the same stack trace to the log sixty times a second for the rest of the session.
+        private bool _drunkVisionFailed;
+
+        private void Update()
+        {
+            if (_drunkVisionFailed) return;
+            try
+            {
+                Synergies.DrunkVision.Tick(UnityEngine.Time.deltaTime);
+            }
+            catch (System.Exception ex)
+            {
+                _drunkVisionFailed = true;
+                Log.LogError($"Fatty Mod: Feature Lost - Drunk Motion Blur. Reason: {ex}");
+                try { Synergies.DrunkVision.Shutdown(); } catch { /* already reported above */ }
+            }
+        }
+
+        private void OnDestroy()
+        {
+            Synergies.DrunkVision.Shutdown();
         }
 
         // The Feast Ledger is IMGUI (see Patches\FeastLedgerGui.cs for why), which draws from a
